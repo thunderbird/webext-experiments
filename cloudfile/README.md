@@ -9,6 +9,13 @@ add-on that makes use of the API.
 Please note that the WeTransfer add-on copied here may be out of date, as it is developed in another
 respository. You should concentrate on the WebExtension Experiment API when looking at this example.
 
+| Item          | Value
+| ------------- | --------
+| Description   | Experiment with add-on exposing the Cloudfile feature
+| Status        | Accepted
+| Compatibility | Thunderbird 63
+| Tracking      | [bug 1481052](https://bugzilla.mozilla.org/show_bug.cgi?id=1481052)
+
 Provided API
 ------------
 
