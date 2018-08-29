@@ -1,0 +1,130 @@
+[
+  {
+    "namespace": "manifest",
+    "types": [
+      {
+        "$extend": "WebExtensionManifest",
+        "properties": {
+          "cloudfile": {
+            "type": "object",
+            "additionalProperties": { "$ref": "UnrecognizedProperty" },
+            "properties": {
+              "name": { "type": "string", "preprocess": "localize" },
+              "service_url": { "type": "string", "optional": true },
+              "new_account_url": { "type": "string", "optional": true },
+              "settings_url": { "type": "string", "format": "relativeUrl", "preprocess": "localize" },
+              "management_url": { "type": "string", "format": "relativeUrl", "preprocess": "localize" }
+            },
+            "optional": true
+          }
+        }
+      }
+    ]
+  },
+  {
+    "namespace": "cloudfile",
+    "events": [
+      {
+        "name": "onUploadFile",
+        "type": "function",
+        "description": "Fired when a file should be uploaded to the cloud file provider",
+        "parameters": [
+          {
+            "name": "fileInfo",
+            "$ref": "CloudFile",
+            "description": "The file to upload"
+          },
+          {
+            "type": "object",
+            "isInstanceOf": "AbortSignal",
+            "name": "abortSignal",
+            "description": "The AbortSignal fired in case the upload is canceled"
+          }
+        ]
+      },
+      {
+        "name": "onDeleteFile",
+        "type": "function",
+        "description": "Fired when a file previously uploaded should be deleted",
+        "parameters": [
+          {
+            "type": "integer",
+            "name": "fileId",
+            "minimum": 1,
+            "description": "An identifier for this file, TODO might go away"
+          }
+        ]
+      }
+    ],
+    "types": [
+      {
+        "id": "QuotaOptions",
+        "type": "object",
+        "description": "Quota options for the cloud file provider",
+        "properties": {
+          "uploadSizeLimit": {
+            "type": "integer",
+            "minimum": -1,
+            "optional": true,
+            "description": "The maximum size in bytes for a single file to upload. Set to -1 if unlimited."
+          },
+          "spaceRemaining": {
+            "type": "integer",
+            "minimum": -1,
+            "optional": true,
+            "description": "The amount of remaining space on the cloud provider, in bytes. Set to -1 if unsupported."
+          },
+          "spaceUsed": {
+            "type": "integer",
+            "minimum": -1,
+            "optional": true,
+            "description": "The amount of space already used on the cloud provider, in bytes. Set to -1 if unsupported."
+          }
+        }
+      },
+      {
+        "id": "CloudFile",
+        "type": "object",
+        "description": "Information about a cloud file",
+        "properties": {
+          "id": { "type": "integer", "minimum": 1 },
+          "name": { "type": "string" },
+          "data": { "type": "object", "isInstanceOf": "ArrayBuffer", "additionalProperties": true }
+        }
+      }
+    ],
+    "functions": [
+      {
+        "name": "setQuota",
+        "type": "function",
+        "description": "Updates the quotas for the cloud file provider",
+        "parameters": [
+          {
+            "name": "quotaOptions",
+            "$ref": "QuotaOptions",
+            "description": "The quota options to set"
+          }
+        ]
+      },
+      {
+        "name": "getQuota",
+        "type": "function",
+        "description": "Gets the quotas for the cloud file provider",
+        "async": "callback",
+        "parameters": [
+          {
+            "name": "callback",
+            "type": "function",
+            "parameters": [
+              {
+                "name": "quotaOptions",
+                "$ref": "QuotaOptions",
+                "description": "The quota options to set"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

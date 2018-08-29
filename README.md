@@ -14,6 +14,7 @@ The following WebExtension Experiments are available in this repository for Thun
 
 | Name                               | Author                                           | Description
 | ---------------------------------- | ------------------------------------------------ | --------------
+| [cloudfile](./cloudfile/)          | [@kewisch](https://github.com/kewisch/)          | Experiment with add-on exposing the Cloudfile feature
 
 
 Contributions Welcome!
