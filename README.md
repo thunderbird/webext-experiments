@@ -10,7 +10,9 @@ APIs.
 
 API Experiments
 ---------------
-The following WebExtension Experiments are available in this repository for Thunderbird:
+The following WebExtension Experiments are available in this repository for Thunderbird. Note that
+WebExtensions experiments are supported starting Thunderbird 63. It is recommended to use a nightly
+build when testing and developing WebExtension Experiments.
 
 | Name                               | Author                                           | Description
 | ---------------------------------- | ------------------------------------------------ | --------------
@@ -90,6 +92,11 @@ Valid status values are:
 The compatibility field shows what versions the API Experiment was designed for. If you are working
 on it in nightly, please be sure to set/update the respective nightly version. If you are sure it
 also works for a range of nightlies, you can also add a range.
+
+### Getting in touch
+If you have questions about WebExtension Experiments in Thunderbird, please stop by our IRC channel
+#maildev on irc.mozilla.org. We are happy to tell you more about how they work, and engage in some
+ad-hoc discussion on how to design WebExtension APIs.
 
 Migrating from Legacy Add-ons
 -----------------------------
