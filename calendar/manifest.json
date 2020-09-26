@@ -1,0 +1,83 @@
+{
+  "manifest_version": 2,
+  "name": "Calendar MailExtensions API Draft",
+  "author": "Philipp Kewisch",
+  "description": "Draft experiment for Thunderbird MailExtensions covering calendaring",
+  "version": "1.0.0",
+  "applications": {
+    "gecko": {
+      "id": "ext-calendar-draft@mozilla.kewis.ch"
+    }
+  },
+
+  "icons": {
+    "32": "addon.svg"
+  },
+
+  "permissions": [
+  ],
+
+  "calendar_provider": {
+    "capabilities": {
+      "timezones": {
+        "floating": false,
+        "UTC": true
+      },
+      "attachments": false,
+      "priority": false,
+      "privacy": ["default", "public", "private"],
+      "categories": {
+        "count": 3
+      },
+      "alarms": {
+        "count": 5,
+        "actions": ["display", "email"]
+      },
+      "tasks": true,
+      "events": true,
+      "remove_modes": ["unsubscribe"],
+      "requires_network": true,
+      "minimum_refresh_interval": 30
+    }
+  },
+
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+
+  "experiment_apis": {
+    "calendar_calendars": {
+      "schema": "schema/calendar-calendars.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "script": "parent/ext-calendar-calendars.js",
+        "paths": [
+          ["calendar", "calendars"]
+        ]
+      }
+    },
+    "calendar_items": {
+      "schema": "schema/calendar-items.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "script": "parent/ext-calendar-items.js",
+        "paths": [
+          ["calendar", "items"]
+        ]
+      }
+    },
+    "calendar_provider": {
+      "schema": "schema/calendar-provider.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "script": "parent/ext-calendar-provider.js",
+        "events": ["startup"],
+        "paths": [
+          ["calendar", "provider"]
+        ]
+      }
+    }
+  }
+}

@@ -17,6 +17,7 @@ build when testing and developing WebExtension Experiments.
 | Name                               | Author                                           | Description
 | ---------------------------------- | ------------------------------------------------ | --------------
 | [cloudfile](./cloudfile/)          | [@kewisch](https://github.com/kewisch/)          | Experiment with add-on exposing the Cloudfile feature
+| [calendar](./calendar/)            | [@kewisch](https://github.com/kewisch/)          | Draft for calendar-related APIs in Thunderbird
 
 
 Contributions Welcome!
