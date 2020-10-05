@@ -29,6 +29,15 @@
         "parameters": [
           { "name": "calendar", "$ref": "calendar.calendars.Calendar" },
           { "name": "item", "$ref": "calendar.items.CalendarItem" }
+        ],
+        "extraParameters": [
+          {
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "returnFormat": { "$ref": "calendar.items.ReturnFormat", "optional": true }
+            }
+          }
         ]
       },
       {
@@ -38,6 +47,15 @@
           { "name": "calendar", "$ref": "calendar.calendars.Calendar" },
           { "name": "item", "$ref": "calendar.items.CalendarItem" },
           { "name": "oldItem", "$ref": "calendar.items.CalendarItem" }
+        ],
+        "extraParameters": [
+          {
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "returnFormat": { "$ref": "calendar.items.ReturnFormat", "optional": true }
+            }
+          }
         ]
       },
       {
@@ -46,6 +64,13 @@
         "parameters": [
           { "name": "calendar", "$ref": "calendar.calendars.Calendar" },
           { "name": "item", "$ref": "calendar.items.CalendarItem" }
+        ]
+      },
+      {
+        "name": "onInit",
+        "type": "function",
+        "parameters": [
+          { "name": "calendar", "$ref": "calendar.calendars.Calendar" }
         ]
       },
       {

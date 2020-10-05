@@ -9,109 +9,20 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { ExtensionAPI, EventManager } = ExtensionCommon;
 var { ExtensionError } = ExtensionUtils;
 
-/* global getResolvedCalendarById */
-
-function propsToItem(props, baseItem) {
-  let item;
-  if (baseItem) {
-    item = baseItem;
-  } else if (props.type == "event") {
-    item = cal.createEvent();
-    cal.dtz.setDefaultStartEndHour(item);
-  } else if (props.type == "task") {
-    item = cal.createTodo();
-    cal.dtz.setDefaultStartEndHour(item);
-  } else {
-    throw new ExtensionError("Invalid item type: " + props.type);
-  }
-
-  if (props.raw?.use == "ical") {
-    item.icalString = props.raw.ical;
-  } else {
-    if (props.id) {
-      item.id = props.id;
-    }
-    if (props.title) {
-      item.title = props.title;
-    }
-    if (props.description) {
-      item.setProperty("description", props.description);
-    }
-    if (props.location) {
-      item.setProperty("location", props.location);
-    }
-    if (props.categories) {
-      item.setCategories(props.categories);
-    }
-
-    if (props.type == "event") {
-      // TODO need to do something about timezone
-      if (props.startDate) {
-        item.startDate = cal.createDateTime(props.startDate);
-      }
-      if (props.endDate) {
-        item.endDate = cal.createDateTime(props.endDate);
-      }
-    } else if (props.type == "task") {
-      // entryDate, dueDate, completedDate, isCompleted, duration
-    }
-  }
-  return item;
-}
-
-function convertItem(item) {
-  let props = { raw: { use: null } };
-
-  if (item instanceof Ci.calIEvent) {
-    props.type = "event";
-  } else if (item instanceof Ci.calITodo) {
-    props.type = "task";
-  }
-
-  props.id = item.id;
-  props.calendarId = item.calendar.superCalendar.id;
-  props.raw.ical = item.icalString;
-  props.title = item.title || "";
-  props.description = item.getProperty("description") || "";
-  props.location = item.getProperty("location") || "";
-  props.categories = item.getCategories();
-
-  if (props.type == "event") {
-    props.startDate = item.startDate.icalString;
-    props.endDate = item.endDate.icalString;
-  } else if (props.type == "task") {
-    // TODO extra properties
-  }
-
-  // TODO metadata
-
-  return props;
-}
-
-function convertAlarm(item, alarm) {
-  const ALARM_RELATED_MAP = {
-    [Ci.calIAlarm.ALARM_RELATED_ABSOLUTE]: "absolute",
-    [Ci.calIAlarm.ALARM_RELATED_START]: "start",
-    [Ci.calIAlarm.ALARM_RELATED_END]: "end",
-  };
-
-  return {
-    itemId: item.id,
-    action: alarm.action.toLowerCase(),
-    date: alarm.alarmDate?.icalString,
-    offset: alarm.offset?.icalString,
-    related: ALARM_RELATED_MAP[alarm.related],
-  };
-}
-
 this.calendar_items = class extends ExtensionAPI {
   getAPI(context) {
-    let calmgr = cal.getCalendarManager();
+    const {
+      getResolvedCalendarById,
+      isCachedCalendar,
+      propsToItem,
+      convertItem,
+      convertAlarm,
+    } = ChromeUtils.import("resource://ext-calendar-draft/api/ext-calendar-utils.jsm");
 
     return {
       calendar: {
         items: {
-          get: async function(calendarId, id) {
+          get: async function(calendarId, id, options) {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
             let pcal = cal.async.promisifyCalendar(calendar);
             let item = await pcal.getItem(id);
@@ -121,9 +32,15 @@ this.calendar_items = class extends ExtensionAPI {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
             let pcal = cal.async.promisifyCalendar(calendar);
             let item = propsToItem(createProperties);
+            item.calendar = calendar.superCalendar;
 
-            item = await pcal.adoptItem(item);
-            return convertItem(item);
+            let createdItem;
+            if (isCachedCalendar(calendarId)) {
+              createdItem = await pcal.modifyItem(item, null);
+            } else {
+              createdItem = await pcal.adoptItem(item);
+            }
+            return convertItem(createdItem, createProperties);
           },
           update: async function(calendarId, id, updateProperties) {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
@@ -133,16 +50,18 @@ this.calendar_items = class extends ExtensionAPI {
             if (!oldItem) {
               throw new ExtensionError("Could not find item " + id);
             }
-            let newItem = propsToItem(updateProperties, oldItem.clone());
-            newItem = await pcal.modifyItem(newItem, oldItem);
+            let newItem = propsToItem(updateProperties, oldItem?.clone());
+            newItem.calendar = calendar.superCalendar;
 
-            return convertItem(newItem);
+            let modifiedItem = await pcal.modifyItem(newItem, oldItem);
+            return convertItem(modifiedItem, updateProperties);
           },
           move: async function(fromCalendarId, id, toCalendarId) {
             if (fromCalendarId == toCalendarId) {
               return;
             }
 
+            let calmgr = cal.getCalendarManager();
             let fromCalendar = cal.async.promisifyCalendar(calmgr.getCalendarById(fromCalendarId));
             let toCalendar = cal.async.promisifyCalendar(calmgr.getCalendarById(toCalendarId));
             let [item] = await fromCalendar.getItem(id);
@@ -168,10 +87,10 @@ this.calendar_items = class extends ExtensionAPI {
           onCreated: new EventManager({
             context,
             name: "calendar.items.onCreated",
-            register: fire => {
+            register: (fire, options) => {
               let observer = cal.createAdapter(Ci.calIObserver, {
                 onAddItem: item => {
-                  fire.sync(convertItem(item));
+                  fire.sync(convertItem(item, options));
                 },
               });
 
@@ -185,12 +104,12 @@ this.calendar_items = class extends ExtensionAPI {
           onUpdated: new EventManager({
             context,
             name: "calendar.items.onUpdated",
-            register: fire => {
+            register: (fire, options) => {
               let observer = cal.createAdapter(Ci.calIObserver, {
                 onModifyItem: (newItem, oldItem) => {
                   // TODO calculate changeInfo
                   let changeInfo = {};
-                  fire.sync(convertItem(newItem), changeInfo);
+                  fire.sync(convertItem(newItem, options), changeInfo);
                 },
               });
 
@@ -221,11 +140,11 @@ this.calendar_items = class extends ExtensionAPI {
           onAlarm: new EventManager({
             context,
             name: "calendar.items.onAlarm",
-            register: fire => {
+            register: (fire, options) => {
               let observer = {
                 QueryInterface: ChromeUtils.generateQI(["calIAlarmServiceObserver"]),
                 onAlarm(item, alarm) {
-                  fire.sync(convertItem(item), convertAlarm(item, alarm));
+                  fire.sync(convertItem(item, options), convertAlarm(item, alarm));
                 },
                 onRemoveAlarmsByItem(item) {},
                 onRemoveAlarmsByCalendar(calendar) {},

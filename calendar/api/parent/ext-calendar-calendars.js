@@ -4,70 +4,22 @@
 
 var { ExtensionCommon } = ChromeUtils.import("resource://gre/modules/ExtensionCommon.jsm");
 var { ExtensionUtils } = ChromeUtils.import("resource://gre/modules/ExtensionUtils.jsm");
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 var { ExtensionAPI, EventManager } = ExtensionCommon;
 var { parseMatchPatterns, ExtensionError } = ExtensionUtils;
 
-function isOwnCalendar(extension, calendar) {
-  return calendar.type == "ext-" + extension.id;
-}
-
-function unwrapCalendar(calendar) {
-  let unwrapped = calendar.wrappedJSObject;
-
-  if (unwrapped.mUncachedCalendar) {
-    unwrapped = unwrapped.mUncachedCalendar.wrappedJSObject;
-  }
-
-  return unwrapped;
-}
-
-function getResolvedCalendarById(extension, id) {
-  let calendar;
-  let calmgr = cal.getCalendarManager();
-  if (id.endsWith("#cache")) {
-    let cached = calmgr.getCalendarById(id.substring(0, id.length - 6));
-    calendar = cached && isOwnCalendar(extension, cached) && cached.wrappedJSObject.mCachedCalendar;
-  } else {
-    calendar = calmgr.getCalendarById(id);
-  }
-
-  if (!calendar) {
-    throw new ExtensionError("Invalid calendar: " + id);
-  }
-  return calendar;
-}
-
-function convertCalendar(extension, calendar) {
-  if (!calendar) {
-    return null;
-  }
-
-  let props = {
-    id: calendar.id,
-    // TODO find a better way to define the cache id
-    type: calendar.type,
-
-    name: calendar.name,
-    url: calendar.uri.spec,
-    readOnly: calendar.readOnly,
-    enabled: !calendar.getProperty("disabled"),
-    color: calendar.getProperty("color") || "#A8C2E1",
-  };
-
-  if (isOwnCalendar(extension, calendar)) {
-    props.cacheId = calendar.id + "#cache";
-    props.capabilities = unwrapCalendar(calendar).capabilities; // TODO needs deep clone?
-  }
-
-  return props;
-}
+var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 this.calendar_calendars = class extends ExtensionAPI {
   getAPI(context) {
-    let calmgr = cal.getCalendarManager();
+    const calmgr = cal.getCalendarManager();
+    const {
+      getResolvedCalendarById,
+      isOwnCalendar,
+      convertCalendar,
+    } = ChromeUtils.import("resource://ext-calendar-draft/api/ext-calendar-utils.jsm");
+
     return {
       calendar: {
         calendars: {
@@ -144,7 +96,6 @@ this.calendar_calendars = class extends ExtensionAPI {
             if (!calendar) {
               throw new ExtensionError(`Invalid calendar id: ${id}`);
             }
-            console.log(updateProperties);
 
             if (updateProperties.capabilities && !isOwnCalendar(context.extension, calendar)) {
               throw new ExtensionError("Cannot update capabilities for foreign calendars");

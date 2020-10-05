@@ -18,16 +18,16 @@ lightning.calendars.onRemoved.addListener((id) => {
 
 lightning.items.onCreated.addListener((item) => {
   console.log("Created item", item);
-});
+}, { returnFormat: "ical" });
 lightning.items.onUpdated.addListener((item, changeInfo) => {
   console.log("Updated item", item, changeInfo);
-});
+}, { returnFormat: "ical" });
 lightning.items.onRemoved.addListener((calendarId, id) => {
   console.log("Deleted item", id);
 });
 lightning.items.onAlarm.addListener((item, alarm) => {
   console.log("Alarm item", item, alarm);
-});
+}, { returnFormat: "ical" });
 
 function icalDate(date) {
   return date.toISOString().replace(/\.\d+Z$/, "").replace(/[:-]/g, "");
@@ -36,16 +36,19 @@ function icalDate(date) {
 lightning.provider.onItemCreated.addListener(async (calendar, item) => {
   console.log("Provider add to calendar", item);
   return item;
-});
+}, { returnFormat: "ical" });
 lightning.provider.onItemUpdated.addListener(async (calendar, item, oldItem) => {
   console.log("Provider modify in calendar", item, oldItem);
   return item;
-});
+}, { returnFormat: "ical" });
 lightning.provider.onItemRemoved.addListener(async (calendar, item) => {
   console.log("Provider remove from calendar", item);
 });
 
 let ticks = {};
+lightning.provider.onInit.addListener(async (calendar) => {
+  console.log("Initializing", calendar);
+});
 lightning.provider.onSync.addListener(async (calendar) => {
   console.log("Synchronizing", calendar, "tick", ticks[calendar.id]);
 
@@ -78,8 +81,9 @@ lightning.provider.onResetSync.addListener(async (calendar) => {
   delete ticks[calendar.id];
 });
 
-
-(async function() {
+// TODO - see comment in ext-calendar-provider.js. Provider should be registered after first tick so
+// onInit handler has a chance to execute, but before the async function is executed.
+setTimeout(async () => {
   let calendar = await lightning.calendars.create({
     type: "ext-" + messenger.runtime.id,
     url: "custom://test",
@@ -109,7 +113,7 @@ lightning.provider.onResetSync.addListener(async (calendar) => {
   await lightning.calendars.update(home.id, { enabled: home.enabled });
 
   if (home.enabled) {
-    let item = await lightning.items.create(home.id, { type: "event", title: "hello", location: "here", categories: ["Birthdays"] });
+    let item = await lightning.items.create(home.id, { type: "event", title: "hello", location: "here", categories: ["Birthdays"], returnFormat: "ical" });
     console.log(item, home);
 
     await lightning.items.update(home.id, item.id, { title: "world" });
@@ -133,4 +137,4 @@ lightning.provider.onResetSync.addListener(async (calendar) => {
   await new Promise(resolve => setTimeout(resolve, 2000));
 
   await lightning.calendars.remove(calendar2.id);
-})();
+}, 2000);

@@ -16,7 +16,7 @@
           "categories": { "type": "array", "items": { "type": "string" }, "optional": true },
           "startDate": { "type": "string", "optional": true },
           "endDate": { "type": "string", "optional": true },
-          "raw": { "$ref": "RawCalendarItem", "optional": true }
+          "formats": { "$ref": "RawCalendarItem", "optional": true }
         }
       },
       {
@@ -26,11 +26,24 @@
           "use": {
             "choices": [
               { "type": "null" },
-              { "type": "string", "enum": ["ical"] }
+              { "$ref": "CalendarItemFormats" }
             ]
           },
-          "ical": { "type": "string", "optional": true }
+          "ical": { "type": "string", "optional": true },
+          "jcal": { "type": "any", "optional": true }
         }
+      },
+      {
+        "id": "CalendarItemFormats",
+        "type": "string",
+        "enum": ["ical", "jcal"]
+      },
+      {
+        "id": "ReturnFormat",
+        "choices": [
+          { "$ref": "CalendarItemFormats" },
+          { "type": "array", "items": { "$ref": "CalendarItemFormats" } }
+        ]
       },
       {
         "id": "CalendarItemAlarm",
@@ -52,7 +65,15 @@
         "type": "function",
         "parameters": [
           { "type": "string", "name": "calendarId" },
-          { "type": "string", "name": "id" }
+          { "type": "string", "name": "id" },
+          {
+            "type": "object",
+            "name": "getOptions",
+            "optional": true,
+            "properties": {
+              "returnFormat": { "$ref": "ReturnFormat", "optional": true }
+            }
+          }
          ]
        },
       {
@@ -73,7 +94,8 @@
               "categories": { "type": "array", "items": { "type": "string" }, "optional": true },
               "startDate": { "type": "string", "optional": true },
               "endDate": { "type": "string", "optional": true },
-              "raw": { "$ref": "RawCalendarItem", "optional": true }
+              "formats": { "$ref": "RawCalendarItem", "optional": true },
+              "returnFormat": { "$ref": "ReturnFormat", "optional": true }
             }
           }
         ]
@@ -95,7 +117,8 @@
               "categories": { "type": "array", "items": { "type": "string" }, "optional": true },
               "startDate": { "type": "string", "optional": true },
               "endDate": { "type": "string", "optional": true },
-              "raw": { "$ref": "RawCalendarItem", "optional": true }
+              "formats": { "$ref": "RawCalendarItem", "optional": true },
+              "returnFormat": { "$ref": "ReturnFormat", "optional": true }
             }
           }
         ]
@@ -126,6 +149,15 @@
         "type": "function",
         "parameters": [
           { "name": "item", "$ref": "CalendarItem" }
+        ],
+        "extraParameters": [
+          {
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "returnFormat": { "$ref": "ReturnFormat", "optional": true }
+            }
+          }
         ]
       },
       {
@@ -134,6 +166,15 @@
         "parameters": [
           { "name": "item", "$ref": "CalendarItem" },
           { "name": "changeInfo", "type": "object", "properties": {}, "description": "TODO needs properties" }
+        ],
+        "extraParameters": [
+          {
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "returnFormat": { "$ref": "ReturnFormat", "optional": true }
+            }
+          }
         ]
       },
       {
@@ -150,6 +191,15 @@
         "parameters": [
           { "name": "item", "$ref": "CalendarItem" },
           { "name": "alarm", "$ref": "CalendarItemAlarm" }
+        ],
+        "extraParameters": [
+          {
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "returnFormat": { "$ref": "ReturnFormat", "optional": true }
+            }
+          }
         ]
       }
     ]

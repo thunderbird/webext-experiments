@@ -3,11 +3,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 var { ExtensionCommon } = ChromeUtils.import("resource://gre/modules/ExtensionCommon.jsm");
+var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 
 var { ExtensionAPI, EventManager } = ExtensionCommon;
-
-/* global convertItem, convertCalendar, propsToItem */
 
 class ExtCalendarProvider extends cal.provider.BaseClass {
   QueryInterface = ChromeUtils.generateQI(["calICalendar", "calIChangeLog"]);
@@ -240,9 +239,26 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
 
 this.calendar_provider = class extends ExtensionAPI {
   onStartup() {
+    Services.io
+      .getProtocolHandler("resource")
+      .QueryInterface(Ci.nsIResProtocolHandler)
+      .setSubstitution("ext-calendar-draft", this.extension.rootURI);
+
     if (this.extension.manifest.calendar_provider) {
       this.onManifestEntry("calendar_provider");
     }
+  }
+  onShutdown(isAppShutdown) {
+    if (isAppShutdown) {
+      return;
+    }
+
+    Cu.unload("resource://ext-calendar-draft/api/ext-calendar-utils.jsm");
+
+    Services.io
+      .getProtocolHandler("resource")
+      .QueryInterface(Ci.nsIResProtocolHandler)
+      .setSubstitution("ext-calendar-draft", null);
   }
 
   onManifestEntry(entryName) {
@@ -257,8 +273,14 @@ this.calendar_provider = class extends ExtensionAPI {
       );
     }
 
-    ExtCalendarProvider.register(this.extension);
-    this.extension.callOnClose(this);
+    // Defer registering the provider until the background page has started. We want the first set
+    // of listeners to be connected before we initialize.
+    // TODO this works, but if there is an async IIFE then that doesn't have the provider registered
+    // yet.
+    this.extension.on("background-page-started", () => {
+      ExtCalendarProvider.register(this.extension);
+      this.extension.callOnClose(this);
+    });
   }
 
   close() {
@@ -268,17 +290,23 @@ this.calendar_provider = class extends ExtensionAPI {
   }
 
   getAPI(context) {
+    const {
+      propsToItem,
+      convertItem,
+      convertCalendar,
+    } = ChromeUtils.import("resource://ext-calendar-draft/api/ext-calendar-utils.jsm");
+
     return {
       calendar: {
         provider: {
           onItemCreated: new EventManager({
             context,
             name: "calendar.provider.onItemCreated",
-            register: fire => {
+            register: (fire, options) => {
               let listener = async (event, calendar, item) => {
                 let props = await fire.async(
                   convertCalendar(context.extension, calendar),
-                  convertItem(item)
+                  convertItem(item, options)
                 );
                 if (!props.id) {
                   props.id = cal.getUUID();
@@ -296,12 +324,12 @@ this.calendar_provider = class extends ExtensionAPI {
           onItemUpdated: new EventManager({
             context,
             name: "calendar.provider.onItemUpdated",
-            register: fire => {
+            register: (fire, options) => {
               let listener = async (event, calendar, item, oldItem) => {
                 let props = await fire.async(
                   convertCalendar(context.extension, calendar),
-                  convertItem(item),
-                  convertItem(oldItem)
+                  convertItem(item, options),
+                  convertItem(oldItem, options)
                 );
                 return propsToItem(props);
               };
@@ -324,6 +352,21 @@ this.calendar_provider = class extends ExtensionAPI {
               context.extension.on("calendar.provider.onItemRemoved", listener);
               return () => {
                 context.extension.off("calendar.provider.onItemRemoved", listener);
+              };
+            },
+          }).api(),
+
+          onInit: new EventManager({
+            context,
+            name: "calendar.provider.onInit",
+            register: fire => {
+              let listener = (event, calendar) => {
+                return fire.async(convertCalendar(context.extension, calendar));
+              };
+
+              context.extension.on("calendar.provider.onInit", listener);
+              return () => {
+                context.extension.off("calendar.provider.onInit", listener);
               };
             },
           }).api(),
