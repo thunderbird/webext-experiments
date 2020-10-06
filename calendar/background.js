@@ -63,18 +63,14 @@ lightning.provider.onSync.addListener(async (calendar) => {
       title: "New Event",
       startDate: icalDate(new Date()),
       endDate: icalDate(new Date()),
-      metadata: {
-        etag: 123
-      }
+      metadata: { etag: 123 }
     });
   } else if (ticks[calendar.id] == 1) {
     await lightning.items.update(calendar.cacheId, "findme", {
       title: "Updated",
       startDate: icalDate(new Date()),
       endDate: icalDate(new Date()),
-      metadata: {
-        etag: 234
-      }
+      metadata: { etag: 234 }
     });
   } else if (ticks[calendar.id] == 2) {
     await lightning.calendars.clear(calendar.cacheId);

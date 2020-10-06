@@ -114,7 +114,7 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
   async adoptItem(aItem, aListener) {
     try {
       let items = await this.extension.emit("calendar.provider.onItemCreated", this, aItem);
-      let { item, metadata } = items.find(({ item }) => item) || {};
+      let { item, metadata } = items.find(props => props.item) || {};
       if (!item) {
         throw new Components.Exception("Did not receive item from extension", Cr.NS_ERROR_FAILURE);
       }
@@ -152,7 +152,7 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
         aNewItem,
         aOldItem
       );
-      let { item, metadata } = items.find(({ item }) => item) || {};
+      let { item, metadata } = items.find(props => props.item) || {};
       if (!item) {
         throw new Components.Exception("Did not receive item from extension", Cr.NS_ERROR_FAILURE);
       }

@@ -31,8 +31,8 @@ this.calendar_items = class extends ExtensionAPI {
             // TODO for some reason using promisifyCalendar directly causes an error
             // "proxy must report the same value for the non-writable, non-configurable property"
             // Patch Lightning to proxy an empty object instead. https://github.com/azu/proxy-frozen-object
-            //let pcal = cal.async.promisifyCalendar(calendar.wrappedJSObject);
-            //let [item] = await pcal.getItem(id);
+            // let pcal = cal.async.promisifyCalendar(calendar.wrappedJSObject);
+            // let [item] = await pcal.getItem(id);
             let deferred = PromiseUtils.defer();
             let listener = cal.async.promiseOperationListener(deferred);
             calendar.getItem(id, listener);
