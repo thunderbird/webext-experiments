@@ -35,10 +35,12 @@ function icalDate(date) {
 
 lightning.provider.onItemCreated.addListener(async (calendar, item) => {
   console.log("Provider add to calendar", item);
+  item.metadata = { created: true };
   return item;
 }, { returnFormat: "ical" });
 lightning.provider.onItemUpdated.addListener(async (calendar, item, oldItem) => {
   console.log("Provider modify in calendar", item, oldItem);
+  item.metadata = { updated: true };
   return item;
 }, { returnFormat: "ical" });
 lightning.provider.onItemRemoved.addListener(async (calendar, item) => {
@@ -60,13 +62,19 @@ lightning.provider.onSync.addListener(async (calendar) => {
       type: "event",
       title: "New Event",
       startDate: icalDate(new Date()),
-      endDate: icalDate(new Date())
+      endDate: icalDate(new Date()),
+      metadata: {
+        etag: 123
+      }
     });
   } else if (ticks[calendar.id] == 1) {
     await lightning.items.update(calendar.cacheId, "findme", {
       title: "Updated",
       startDate: icalDate(new Date()),
-      endDate: icalDate(new Date())
+      endDate: icalDate(new Date()),
+      metadata: {
+        etag: 234
+      }
     });
   } else if (ticks[calendar.id] == 2) {
     await lightning.calendars.clear(calendar.cacheId);
@@ -84,6 +92,9 @@ lightning.provider.onResetSync.addListener(async (calendar) => {
 // TODO - see comment in ext-calendar-provider.js. Provider should be registered after first tick so
 // onInit handler has a chance to execute, but before the async function is executed.
 setTimeout(async () => {
+  let calendars = await lightning.calendars.query({ type: "ext-" + messenger.runtime.id });
+  await Promise.all(calendars.map((calendar) => lightning.calendars.remove(calendar.id)));
+
   let calendar = await lightning.calendars.create({
     type: "ext-" + messenger.runtime.id,
     url: "custom://test",
@@ -97,6 +108,12 @@ setTimeout(async () => {
 
   console.log("got calendar", calendar2);
 
+  await lightning.calendars.synchronize();
+  await new Promise(resolve => setTimeout(resolve, 500));
+
+  let gotitem = await lightning.items.get(calendar2.id, "findme");
+  console.log("Retrieved item", gotitem);
+
   let [home, ...rest] = await lightning.calendars.query({ type: "storage" });
   console.log("queried calendars", home, rest);
 
@@ -109,14 +126,15 @@ setTimeout(async () => {
   }
 
   home.enabled = !home.enabled;
-
   await lightning.calendars.update(home.id, { enabled: home.enabled });
 
   if (home.enabled) {
     let item = await lightning.items.create(home.id, { type: "event", title: "hello", location: "here", categories: ["Birthdays"], returnFormat: "ical" });
-    console.log(item, home);
+    console.log("Created item", item, home);
 
-    await lightning.items.update(home.id, item.id, { title: "world" });
+    let updated = await lightning.items.update(home.id, item.id, { title: "world" });
+    console.log("Updated item", updated);
+
 
     await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -127,6 +145,7 @@ setTimeout(async () => {
       color: "#00FF00"
     });
 
+
     await lightning.items.move(home.id, item.id, home2.id);
     await new Promise(resolve => setTimeout(resolve, 1000));
     await lightning.items.remove(home2.id, item.id);
@@ -135,6 +154,4 @@ setTimeout(async () => {
   }
 
   await new Promise(resolve => setTimeout(resolve, 2000));
-
-  await lightning.calendars.remove(calendar2.id);
 }, 2000);

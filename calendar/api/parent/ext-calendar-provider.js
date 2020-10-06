@@ -114,9 +114,13 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
   async adoptItem(aItem, aListener) {
     try {
       let items = await this.extension.emit("calendar.provider.onItemCreated", this, aItem);
-      let item = items.find(Boolean);
+      let { item, metadata } = items.find(({ item }) => item) || {};
       if (!item) {
         throw new Components.Exception("Did not receive item from extension", Cr.NS_ERROR_FAILURE);
+      }
+
+      if (metadata) {
+        this.offlineStorage.setMetaData(item.hashId, JSON.stringify(metadata));
       }
 
       item.calendar = this.superCalendar;
@@ -148,9 +152,13 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
         aNewItem,
         aOldItem
       );
-      let item = items.find(Boolean);
+      let { item, metadata } = items.find(({ item }) => item) || {};
       if (!item) {
         throw new Components.Exception("Did not receive item from extension", Cr.NS_ERROR_FAILURE);
+      }
+
+      if (metadata) {
+        this.offlineStorage.setMetaData(item.hashId, JSON.stringify(metadata));
       }
 
       item.calendar = this.superCalendar;
@@ -306,12 +314,12 @@ this.calendar_provider = class extends ExtensionAPI {
               let listener = async (event, calendar, item) => {
                 let props = await fire.async(
                   convertCalendar(context.extension, calendar),
-                  convertItem(item, options)
+                  convertItem(item, options, context.extension)
                 );
                 if (!props.id) {
                   props.id = cal.getUUID();
                 }
-                return propsToItem(props);
+                return { item: propsToItem(props), metadata: props.metadata };
               };
 
               context.extension.on("calendar.provider.onItemCreated", listener);
@@ -328,10 +336,10 @@ this.calendar_provider = class extends ExtensionAPI {
               let listener = async (event, calendar, item, oldItem) => {
                 let props = await fire.async(
                   convertCalendar(context.extension, calendar),
-                  convertItem(item, options),
-                  convertItem(oldItem, options)
+                  convertItem(item, options, context.extension),
+                  convertItem(oldItem, options, context.extension)
                 );
-                return propsToItem(props);
+                return { item: propsToItem(props), metadata: props.metadata };
               };
 
               context.extension.on("calendar.provider.onItemUpdated", listener);

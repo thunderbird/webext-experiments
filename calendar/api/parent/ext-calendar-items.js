@@ -5,6 +5,7 @@
 var { ExtensionCommon } = ChromeUtils.import("resource://gre/modules/ExtensionCommon.jsm");
 var { ExtensionUtils } = ChromeUtils.import("resource://gre/modules/ExtensionUtils.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { PromiseUtils } = ChromeUtils.import("resource://gre/modules/PromiseUtils.jsm");
 
 var { ExtensionAPI, EventManager } = ExtensionCommon;
 var { ExtensionError } = ExtensionUtils;
@@ -13,7 +14,9 @@ this.calendar_items = class extends ExtensionAPI {
   getAPI(context) {
     const {
       getResolvedCalendarById,
+      getCachedCalendar,
       isCachedCalendar,
+      isOwnCalendar,
       propsToItem,
       convertItem,
       convertAlarm,
@@ -24,9 +27,18 @@ this.calendar_items = class extends ExtensionAPI {
         items: {
           get: async function(calendarId, id, options) {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
-            let pcal = cal.async.promisifyCalendar(calendar);
-            let item = await pcal.getItem(id);
-            return convertItem(item);
+
+            // TODO for some reason using promisifyCalendar directly causes an error
+            // "proxy must report the same value for the non-writable, non-configurable property"
+            // Patch Lightning to proxy an empty object instead. https://github.com/azu/proxy-frozen-object
+            //let pcal = cal.async.promisifyCalendar(calendar.wrappedJSObject);
+            //let [item] = await pcal.getItem(id);
+            let deferred = PromiseUtils.defer();
+            let listener = cal.async.promiseOperationListener(deferred);
+            calendar.getItem(id, listener);
+            let [item] = await deferred.promise;
+
+            return convertItem(item, options || {}, context.extension);
           },
           create: async function(calendarId, createProperties) {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
@@ -34,13 +46,19 @@ this.calendar_items = class extends ExtensionAPI {
             let item = propsToItem(createProperties);
             item.calendar = calendar.superCalendar;
 
+            if (createProperties.metadata && isOwnCalendar(calendar, context.extension)) {
+              let cache = getCachedCalendar(calendar);
+              cache.setMetaData(item.hashId, JSON.stringify(createProperties.metadata));
+            }
+
             let createdItem;
             if (isCachedCalendar(calendarId)) {
               createdItem = await pcal.modifyItem(item, null);
             } else {
               createdItem = await pcal.adoptItem(item);
             }
-            return convertItem(createdItem, createProperties);
+
+            return convertItem(createdItem, createProperties, context.extension);
           },
           update: async function(calendarId, id, updateProperties) {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
@@ -53,8 +71,14 @@ this.calendar_items = class extends ExtensionAPI {
             let newItem = propsToItem(updateProperties, oldItem?.clone());
             newItem.calendar = calendar.superCalendar;
 
+            if (updateProperties.metadata && isOwnCalendar(calendar, context.extension)) {
+              // TODO merge or replace?
+              let cache = getCachedCalendar(calendar);
+              cache.setMetaData(newItem.hashId, JSON.stringify(updateProperties.metadata));
+            }
+
             let modifiedItem = await pcal.modifyItem(newItem, oldItem);
-            return convertItem(modifiedItem, updateProperties);
+            return convertItem(modifiedItem, updateProperties, context.extension);
           },
           move: async function(fromCalendarId, id, toCalendarId) {
             if (fromCalendarId == toCalendarId) {
@@ -70,6 +94,13 @@ this.calendar_items = class extends ExtensionAPI {
               throw new ExtensionError("Could not find item " + id);
             }
 
+            if (isOwnCalendar(toCalendar, context.extension) && isOwnCalendar(fromCalendar, context.extension)) {
+              // TODO doing this first, the item may not be in the db and it will fail. Doing this
+              // after addItem, the metadata will not be available for the onCreated listener
+              let fromCache = getCachedCalendar(fromCalendar);
+              let toCache = getCachedCalendar(toCalendar);
+              toCache.setMetaData(item.hashId, fromCache.getMetaData(item.hashId));
+            }
             await toCalendar.addItem(item);
             await fromCalendar.deleteItem(item);
           },
@@ -90,7 +121,7 @@ this.calendar_items = class extends ExtensionAPI {
             register: (fire, options) => {
               let observer = cal.createAdapter(Ci.calIObserver, {
                 onAddItem: item => {
-                  fire.sync(convertItem(item, options));
+                  fire.sync(convertItem(item, options, context.extension));
                 },
               });
 
@@ -109,7 +140,7 @@ this.calendar_items = class extends ExtensionAPI {
                 onModifyItem: (newItem, oldItem) => {
                   // TODO calculate changeInfo
                   let changeInfo = {};
-                  fire.sync(convertItem(newItem, options), changeInfo);
+                  fire.sync(convertItem(newItem, options, context.extension), changeInfo);
                 },
               });
 
@@ -144,7 +175,7 @@ this.calendar_items = class extends ExtensionAPI {
               let observer = {
                 QueryInterface: ChromeUtils.generateQI(["calIAlarmServiceObserver"]),
                 onAlarm(item, alarm) {
-                  fire.sync(convertItem(item, options), convertAlarm(item, alarm));
+                  fire.sync(convertItem(item, options, context.extension), convertAlarm(item, alarm));
                 },
                 onRemoveAlarmsByItem(item) {},
                 onRemoveAlarmsByCalendar(calendar) {},

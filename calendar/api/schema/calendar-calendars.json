@@ -169,6 +169,12 @@
         "parameters": [
           { "type": "string", "name": "id" }
         ]
+      },
+      {
+        "name": "synchronize",
+        "async": true,
+        "type": "function",
+        "parameters": []
       }
     ],
     "events": [

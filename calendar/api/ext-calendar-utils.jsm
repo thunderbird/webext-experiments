@@ -6,6 +6,7 @@ var EXPORTED_SYMBOLS = [
   "isOwnCalendar",
   "unwrapCalendar",
   "getResolvedCalendarById",
+  "getCachedCalendar",
   "isCachedCalendar",
   "convertCalendar",
   "propsToItem",
@@ -26,8 +27,8 @@ var { ExtensionError } = ChromeUtils.import(
   "resource://gre/modules/ExtensionUtils.jsm"
 ).ExtensionUtils;
 
-function isOwnCalendar(extension, calendar) {
-  return calendar.type == "ext-" + extension.id;
+function isOwnCalendar(calendar, extension) {
+  return calendar.superCalendar.type == "ext-" + extension.id;
 }
 
 function unwrapCalendar(calendar) {
@@ -45,7 +46,7 @@ function getResolvedCalendarById(extension, id) {
   let calmgr = cal.getCalendarManager();
   if (id.endsWith("#cache")) {
     let cached = calmgr.getCalendarById(id.substring(0, id.length - 6));
-    calendar = cached && isOwnCalendar(extension, cached) && cached.wrappedJSObject.mCachedCalendar;
+    calendar = cached && isOwnCalendar(cached, extension) && cached.wrappedJSObject.mCachedCalendar;
   } else {
     calendar = calmgr.getCalendarById(id);
   }
@@ -54,6 +55,10 @@ function getResolvedCalendarById(extension, id) {
     throw new ExtensionError("Invalid calendar: " + id);
   }
   return calendar;
+}
+
+function getCachedCalendar(calendar) {
+  return calendar.wrappedJSObject.mCachedCalendar || calendar;
 }
 
 function isCachedCalendar(id) {
@@ -76,10 +81,10 @@ function convertCalendar(extension, calendar) {
     color: calendar.getProperty("color") || "#A8C2E1",
   };
 
-  if (isOwnCalendar(extension, calendar)) {
+  if (isOwnCalendar(calendar, extension)) {
     // TODO find a better way to define the cache id
-    props.cacheId = calendar.id + "#cache";
-    props.capabilities = unwrapCalendar(calendar).capabilities; // TODO needs deep clone?
+    props.cacheId = calendar.superCalendar.id + "#cache";
+    props.capabilities = unwrapCalendar(calendar.superCalendar).capabilities; // TODO needs deep clone?
   }
 
   return props;
@@ -135,7 +140,11 @@ function propsToItem(props, baseItem) {
   return item;
 }
 
-function convertItem(item, options) {
+function convertItem(item, options, extension) {
+  if (!item) {
+    return null;
+  }
+
   let props = {};
 
   if (item instanceof Ci.calIEvent) {
@@ -150,6 +159,17 @@ function convertItem(item, options) {
   props.description = item.getProperty("description") || "";
   props.location = item.getProperty("location") || "";
   props.categories = item.getCategories();
+
+  if (isOwnCalendar(item.calendar, extension)) {
+    props.metadata = {};
+    let cache = getCachedCalendar(item.calendar);
+    try {
+      // TODO This is a sync operation. Not great. Can we optimize this?
+      props.metadata = JSON.parse(cache.getMetaData(item.hashId)) ?? {};
+    } catch (e) {
+      // Ignore json parse errors
+    }
+  }
 
   if (options.format) {
     props.formats = { use: null };
@@ -179,8 +199,6 @@ function convertItem(item, options) {
   } else if (props.type == "task") {
     // TODO extra properties
   }
-
-  // TODO metadata
 
   return props;
 }

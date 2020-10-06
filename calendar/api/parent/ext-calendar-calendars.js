@@ -65,7 +65,7 @@ this.calendar_calendars = class extends ExtensionAPI {
             // TODO find a better way to determine cache id
             if (id.endsWith("#cache")) {
               let calendar = calmgr.getCalendarById(id.substring(0, id.length - 6));
-              let own = calendar.offlineStorage && isOwnCalendar(context.extension, calendar);
+              let own = calendar.offlineStorage && isOwnCalendar(calendar, context.extension);
               return own ? convertCalendar(context.extension, calendar.offlineStorage) : null;
             } else {
               let calendar = calmgr.getCalendarById(id);
@@ -97,10 +97,10 @@ this.calendar_calendars = class extends ExtensionAPI {
               throw new ExtensionError(`Invalid calendar id: ${id}`);
             }
 
-            if (updateProperties.capabilities && !isOwnCalendar(context.extension, calendar)) {
+            if (updateProperties.capabilities && !isOwnCalendar(calendar, context.extension)) {
               throw new ExtensionError("Cannot update capabilities for foreign calendars");
             }
-            if (updateProperties.url && !isOwnCalendar(context.extension, calendar)) {
+            if (updateProperties.url && !isOwnCalendar(calendar, context.extension)) {
               throw new ExtensionError("Cannot update url for foreign calendars");
             }
 
@@ -136,7 +136,7 @@ this.calendar_calendars = class extends ExtensionAPI {
             let offlineStorage = getResolvedCalendarById(context.extension, id);
             let calendar = calmgr.getCalendarById(id.substring(0, id.length - 6));
 
-            if (!isOwnCalendar(context.extension, calendar)) {
+            if (!isOwnCalendar(calendar, context.extension)) {
               throw new ExtensionError("Cannot clear foreign calendar");
             }
 
@@ -156,6 +156,13 @@ this.calendar_calendars = class extends ExtensionAPI {
             });
 
             calendar.wrappedJSObject.mObservers.notify("onLoad", [calendar]);
+          },
+
+          synchronize: function() {
+            // TODO don't rely on the window composite calendar. Have a method in the calendar
+            // manager that will do a full refresh
+            let mainWindow = Services.wm.getMostRecentWindow("mail:3pane");
+            cal.view.getCompositeCalendar(mainWindow).refresh();
           },
 
           onCreated: new EventManager({
