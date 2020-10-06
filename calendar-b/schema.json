@@ -1,0 +1,52 @@
+[{
+  "namespace": "calendarProvider",
+  "functions": [{
+    "name": "getCurrentInvitation",
+    "type": "function",
+    "description": "Finds the Exchange Item ID of the currently viewed message (not the ID of the event in the message)",
+    "async": true,
+    "parameters": [],
+    "returns": {
+      "name": "id",
+      "type": "string"
+    }
+  }, {
+    "name": "registerCalendar",
+    "type": "function",
+    "description": "Notifies the back end that a calendar is available",
+    "async": true,
+    "parameters": [{
+      "name": "key",
+      "type": "string",
+      "description": "The key for the JsAccount server."
+    }]
+  }],
+  "events": [{
+    "name": "dispatcher",
+    "type": "function",
+    "description": "The master dispatcher for calendar requests.",
+    "parameters": [{
+      "name": "key",
+      "type": "string",
+      "description": "The key for the incoming server used to store connection properties."
+    }, {
+      "name": "operation",
+      "type": "string",
+      "description": "The name of the calendar operation."
+    }, {
+      "name": "data",
+      "type": "object",
+      "description": "Additional operation-dependent data."
+    }],
+    "returns": {
+      "type": "any",
+      "description": "Operation-dependent return value."
+    },
+    "extraParameters": [{
+      "name": "scheme",
+      "type": "string",
+      "description": "The scheme used to distinguish account types."
+    }]
+  }]
+}]
+
