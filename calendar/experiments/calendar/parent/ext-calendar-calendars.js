@@ -18,7 +18,7 @@ this.calendar_calendars = class extends ExtensionAPI {
       getResolvedCalendarById,
       isOwnCalendar,
       convertCalendar,
-    } = ChromeUtils.import("resource://ext-calendar-draft/api/ext-calendar-utils.jsm");
+    } = ChromeUtils.import(this.extension.rootURI.resolve("experiments/calendar/ext-calendar-utils.jsm"));
 
     return {
       calendar: {
