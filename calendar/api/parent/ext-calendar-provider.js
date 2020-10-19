@@ -62,12 +62,25 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
     }
   }
 
+  setProperty(name, value) {
+    if (name === "readOnly" && this.capabilities.mutable === false) {
+      return; // prevent change
+    }
+    super.setProperty(name, value);
+  }
+
   getProperty(name) {
     switch (name) {
       case "cache.supported":
       case "cache.enabled":
       case "cache.always":
         return true;
+
+      case "readOnly":
+        if (this.capabilities.mutable === false) {
+          return true;
+        }
+        break;
 
       case "capabilities.timezones.floating.supported":
         return !(this.capabilities.timezones?.floating === false);
