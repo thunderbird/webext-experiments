@@ -49,30 +49,30 @@
 
   "experiment_apis": {
     "calendar_calendars": {
-      "schema": "api/schema/calendar-calendars.json",
+      "schema": "experiments/calendar/schema/calendar-calendars.json",
       "parent": {
         "scopes": ["addon_parent"],
-        "script": "api/parent/ext-calendar-calendars.js",
+        "script": "experiments/calendar/parent/ext-calendar-calendars.js",
         "paths": [
           ["calendar", "calendars"]
         ]
       }
     },
     "calendar_items": {
-      "schema": "api/schema/calendar-items.json",
+      "schema": "experiments/calendar/schema/calendar-items.json",
       "parent": {
         "scopes": ["addon_parent"],
-        "script": "api/parent/ext-calendar-items.js",
+        "script": "experiments/calendar/parent/ext-calendar-items.js",
         "paths": [
           ["calendar", "items"]
         ]
       }
     },
     "calendar_provider": {
-      "schema": "api/schema/calendar-provider.json",
+      "schema": "experiments/calendar/schema/calendar-provider.json",
       "parent": {
         "scopes": ["addon_parent"],
-        "script": "api/parent/ext-calendar-provider.js",
+        "script": "experiments/calendar/parent/ext-calendar-provider.js",
         "events": ["startup"],
         "paths": [
           ["calendar", "provider"]

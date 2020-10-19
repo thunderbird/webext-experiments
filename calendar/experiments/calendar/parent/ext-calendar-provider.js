@@ -260,11 +260,6 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
 
 this.calendar_provider = class extends ExtensionAPI {
   onStartup() {
-    Services.io
-      .getProtocolHandler("resource")
-      .QueryInterface(Ci.nsIResProtocolHandler)
-      .setSubstitution("ext-calendar-draft", this.extension.rootURI);
-
     if (this.extension.manifest.calendar_provider) {
       this.onManifestEntry("calendar_provider");
     }
@@ -274,12 +269,8 @@ this.calendar_provider = class extends ExtensionAPI {
       return;
     }
 
-    Cu.unload("resource://ext-calendar-draft/api/ext-calendar-utils.jsm");
-
-    Services.io
-      .getProtocolHandler("resource")
-      .QueryInterface(Ci.nsIResProtocolHandler)
-      .setSubstitution("ext-calendar-draft", null);
+    Cu.unload(this.extension.rootURI.resolve("experiments/calendar/ext-calendar-utils.jsm"));
+    Services.obs.notifyObservers(null, "startupcache-invalidate", null);
   }
 
   onManifestEntry(entryName) {
@@ -315,7 +306,7 @@ this.calendar_provider = class extends ExtensionAPI {
       propsToItem,
       convertItem,
       convertCalendar,
-    } = ChromeUtils.import("resource://ext-calendar-draft/api/ext-calendar-utils.jsm");
+    } = ChromeUtils.import(this.extension.rootURI.resolve("experiments/calendar/ext-calendar-utils.jsm"));
 
     return {
       calendar: {
