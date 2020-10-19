@@ -9,7 +9,7 @@ var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
 var { ExtensionAPI, EventManager } = ExtensionCommon;
 
 class ExtCalendarProvider extends cal.provider.BaseClass {
-  QueryInterface = ChromeUtils.generateQI(["calICalendar", "calIChangeLog"]);
+  QueryInterface = ChromeUtils.generateQI(["calICalendar", "calIChangeLog", "calISchedulingSupport"]);
 
   static register(extension) {
     let calmgr = cal.getCalendarManager();
