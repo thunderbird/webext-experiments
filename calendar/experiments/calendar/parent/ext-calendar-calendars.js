@@ -6,7 +6,7 @@ var { ExtensionCommon } = ChromeUtils.import("resource://gre/modules/ExtensionCo
 var { ExtensionUtils } = ChromeUtils.import("resource://gre/modules/ExtensionUtils.jsm");
 
 var { ExtensionAPI, EventManager } = ExtensionCommon;
-var { parseMatchPatterns, ExtensionError } = ExtensionUtils;
+var { ExtensionError } = ExtensionUtils;
 
 var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
@@ -26,7 +26,14 @@ this.calendar_calendars = class extends ExtensionAPI {
           query: async function({ type, url, name, color, readOnly, enabled }) {
             let calendars = calmgr.getCalendars();
 
-            let patterns = url ? parseMatchPatterns([url]) : null;
+            let pattern = null;
+            if (url) {
+              try {
+                pattern = new MatchPattern(url, { restrictSchemes: false });
+              } catch (e) {
+                throw new ExtensionError(`Invalid url pattern: ${url}`);
+              }
+            }
 
             return calendars
               .filter(calendar => {
@@ -36,7 +43,7 @@ this.calendar_calendars = class extends ExtensionAPI {
                   matches = false;
                 }
 
-                if (url && !patterns.matches(calendar.uri)) {
+                if (url && !pattern.matches(calendar.uri)) {
                   matches = false;
                 }
 
