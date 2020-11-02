@@ -171,7 +171,7 @@ function convertItem(item, options, extension) {
     }
   }
 
-  if (options.format) {
+  if (options?.returnFormat) {
     props.formats = { use: null };
     let formats = options.returnFormat;
     if (!Array.isArray(formats)) {
