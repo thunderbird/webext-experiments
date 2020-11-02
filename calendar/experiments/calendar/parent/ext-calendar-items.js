@@ -38,7 +38,7 @@ this.calendar_items = class extends ExtensionAPI {
             calendar.getItem(id, listener);
             let [item] = await deferred.promise;
 
-            return convertItem(item, options || {}, context.extension);
+            return convertItem(item, options, context.extension);
           },
           create: async function(calendarId, createProperties) {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
