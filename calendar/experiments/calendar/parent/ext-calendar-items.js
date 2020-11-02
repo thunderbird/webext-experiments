@@ -48,7 +48,7 @@ this.calendar_items = class extends ExtensionAPI {
 
             if (createProperties.metadata && isOwnCalendar(calendar, context.extension)) {
               let cache = getCachedCalendar(calendar);
-              cache.setMetaData(item.hashId, JSON.stringify(createProperties.metadata));
+              cache.setMetaData(item.id, JSON.stringify(createProperties.metadata));
             }
 
             let createdItem;
@@ -74,7 +74,7 @@ this.calendar_items = class extends ExtensionAPI {
             if (updateProperties.metadata && isOwnCalendar(calendar, context.extension)) {
               // TODO merge or replace?
               let cache = getCachedCalendar(calendar);
-              cache.setMetaData(newItem.hashId, JSON.stringify(updateProperties.metadata));
+              cache.setMetaData(newItem.id, JSON.stringify(updateProperties.metadata));
             }
 
             let modifiedItem = await pcal.modifyItem(newItem, oldItem);
@@ -99,7 +99,7 @@ this.calendar_items = class extends ExtensionAPI {
               // after addItem, the metadata will not be available for the onCreated listener
               let fromCache = getCachedCalendar(fromCalendar);
               let toCache = getCachedCalendar(toCalendar);
-              toCache.setMetaData(item.hashId, fromCache.getMetaData(item.hashId));
+              toCache.setMetaData(item.id, fromCache.getMetaData(item.id));
             }
             await toCalendar.addItem(item);
             await fromCalendar.deleteItem(item);

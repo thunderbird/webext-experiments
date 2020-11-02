@@ -133,7 +133,7 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
       }
 
       if (metadata) {
-        this.offlineStorage.setMetaData(item.hashId, JSON.stringify(metadata));
+        this.offlineStorage.setMetaData(item.id, JSON.stringify(metadata));
       }
 
       item.calendar = this.superCalendar;
@@ -171,7 +171,7 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
       }
 
       if (metadata) {
-        this.offlineStorage.setMetaData(item.hashId, JSON.stringify(metadata));
+        this.offlineStorage.setMetaData(item.id, JSON.stringify(metadata));
       }
 
       item.calendar = this.superCalendar;

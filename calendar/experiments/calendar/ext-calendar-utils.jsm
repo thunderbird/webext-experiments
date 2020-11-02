@@ -165,7 +165,7 @@ function convertItem(item, options, extension) {
     let cache = getCachedCalendar(item.calendar);
     try {
       // TODO This is a sync operation. Not great. Can we optimize this?
-      props.metadata = JSON.parse(cache.getMetaData(item.hashId)) ?? {};
+      props.metadata = JSON.parse(cache.getMetaData(item.id)) ?? {};
     } catch (e) {
       // Ignore json parse errors
     }
