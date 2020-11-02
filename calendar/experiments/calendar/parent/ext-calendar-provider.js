@@ -29,7 +29,7 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
   }
   static unregister(extension) {
     let calmgr = cal.getCalendarManager();
-    calmgr.unregisterCalendarProvider("ext-" + extension.id);
+    calmgr.unregisterCalendarProvider("ext-" + extension.id, true);
   }
 
   constructor() {
