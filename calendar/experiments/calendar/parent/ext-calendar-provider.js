@@ -98,8 +98,9 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
           : ["PUBLIC", "CONFIDENTIAL", "PRIVATE"];
       case "capabilities.categories.maxCount":
         return Number.isInteger(this.capabilities.categories?.count)
+          && this.capabilities.categories.count >= 0
           ? this.capabilities.categories?.count
-          : -1;
+          : null;
       case "capabilities.alarms.maxCount":
         return Number.isInteger(this.capabilities.alarms?.count)
           ? this.capabilities.alarms?.count
