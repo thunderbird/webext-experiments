@@ -355,7 +355,10 @@ this.calendar_provider = class extends ExtensionAPI {
             name: "calendar.provider.onItemRemoved",
             register: fire => {
               let listener = (event, calendar, item) => {
-                return fire.async(convertCalendar(context.extension, calendar), item);
+                return fire.async(
+                  convertCalendar(context.extension, calendar),
+                  convertItem(item, {}, context.extension),
+                );
               };
 
               context.extension.on("calendar.provider.onItemRemoved", listener);
