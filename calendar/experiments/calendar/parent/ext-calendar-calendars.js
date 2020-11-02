@@ -15,6 +15,7 @@ this.calendar_calendars = class extends ExtensionAPI {
   getAPI(context) {
     const calmgr = cal.getCalendarManager();
     const {
+      unwrapCalendar,
       getResolvedCalendarById,
       isOwnCalendar,
       convertCalendar,
@@ -71,7 +72,7 @@ this.calendar_calendars = class extends ExtensionAPI {
           get: async function(id) {
             // TODO find a better way to determine cache id
             if (id.endsWith("#cache")) {
-              let calendar = calmgr.getCalendarById(id.substring(0, id.length - 6));
+              let calendar = unwrapCalendar(calmgr.getCalendarById(id.substring(0, id.length - 6)));
               let own = calendar.offlineStorage && isOwnCalendar(calendar, context.extension);
               return own ? convertCalendar(context.extension, calendar.offlineStorage) : null;
             } else {
