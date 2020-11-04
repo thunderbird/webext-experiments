@@ -12,6 +12,7 @@ var EXPORTED_SYMBOLS = [
   "propsToItem",
   "convertItem",
   "convertAlarm",
+  "findIdentityKey",
 ];
 
 var { XPCOMUtils } = ChromeUtils.import("resource://gre/modules/XPCOMUtils.jsm");
@@ -21,6 +22,7 @@ XPCOMUtils.defineLazyModuleGetters(this, {
   ICAL: "resource:///modules/calendar/Ical.jsm",
   CalEvent: "resource:///modules/CalEvent.jsm",
   CalTodo: "resource:///modules/CalTodo.jsm",
+  MailServices: "resource:///modules/MailServices.jsm",
 });
 
 var { ExtensionError } = ChromeUtils.import(
@@ -79,6 +81,7 @@ function convertCalendar(extension, calendar) {
     readOnly: calendar.readOnly,
     enabled: !calendar.getProperty("disabled"),
     color: calendar.getProperty("color") || "#A8C2E1",
+    email: calendar.getProperty("imip.identity")?.email,
   };
 
   if (isOwnCalendar(calendar, extension)) {
@@ -217,4 +220,16 @@ function convertAlarm(item, alarm) {
     offset: alarm.offset?.icalString,
     related: ALARM_RELATED_MAP[alarm.related],
   };
+}
+
+function findIdentityKey(email) {
+  if (!email) {
+    return null;
+  }
+  for (let identity of MailServices.accounts.allIdentities) {
+    if (identity.email == email) {
+      return identity.key;
+    }
+  }
+  throw new ExtensionError(`Email address ${email} is unknown`);
 }

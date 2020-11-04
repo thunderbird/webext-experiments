@@ -18,6 +18,7 @@ this.calendar_calendars = class extends ExtensionAPI {
       getResolvedCalendarById,
       isOwnCalendar,
       convertCalendar,
+      findIdentityKey,
     } = ChromeUtils.import(this.extension.rootURI.resolve("experiments/calendar/ext-calendar-utils.jsm"));
 
     return {
@@ -80,6 +81,8 @@ this.calendar_calendars = class extends ExtensionAPI {
             }
           },
           create: async function(createProperties) {
+            let key = findIdentityKey(createProperties.email);
+
             let calendar = calmgr.createCalendar(
               createProperties.type,
               Services.io.newURI(createProperties.url)
@@ -89,8 +92,11 @@ this.calendar_calendars = class extends ExtensionAPI {
             }
 
             calendar.name = createProperties.name;
-            if (typeof createProperties.color != "undefined") {
+            if (createProperties.color != null) {
               calendar.setProperty("color", createProperties.color);
+            }
+            if (key) {
+              calendar.setProperty("imip.identity.key", key);
             }
 
             calmgr.registerCalendar(calendar);
@@ -123,6 +129,10 @@ this.calendar_calendars = class extends ExtensionAPI {
               if (updateProperties[prop] != null) {
                 calendar.setProperty(prop, updateProperties[prop]);
               }
+            }
+
+            if (updateProperties.email != null) {
+              calendar.setProperty("imip.identity.key", findIdentityKey(updateProperties.email));
             }
 
             // TODO capabilities merging
@@ -210,6 +220,10 @@ this.calendar_calendars = class extends ExtensionAPI {
                       break;
                     case "disabled":
                       fire.sync(converted, { enabled: !value });
+                      break;
+                    case "imip.identity.key":
+                      let identity = calendar.getProperty("imip.identity");
+                      fire.sync(converted, { email: identity?.email });
                       break;
                   }
                 },
