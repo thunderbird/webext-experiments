@@ -136,7 +136,9 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
         this.offlineStorage.setMetaData(item.hashId, JSON.stringify(metadata));
       }
 
-      item.calendar = this.superCalendar;
+      if (!item.calendar) {
+        item.calendar = this.superCalendar;
+      }
       this.observers.notify("onAddItem", [item]);
       this.notifyOperationComplete(
         aListener,
@@ -174,7 +176,9 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
         this.offlineStorage.setMetaData(item.hashId, JSON.stringify(metadata));
       }
 
-      item.calendar = this.superCalendar;
+      if (!item.calendar) {
+        item.calendar = this.superCalendar;
+      }
       this.observers.notify("onModifyItem", [item, aOldItem]);
       this.notifyOperationComplete(
         aListener,
@@ -317,10 +321,13 @@ this.calendar_provider = class extends ExtensionAPI {
                   convertCalendar(context.extension, calendar),
                   convertItem(item, options, context.extension)
                 );
-                if (!props.id) {
-                  props.id = cal.getUUID();
+                if (props?.type) {
+                  item = propsToItem(props, item);
                 }
-                return { item: propsToItem(props), metadata: props.metadata };
+                if (!item.id) {
+                  item.id = cal.getUUID();
+                }
+                return { item, metadata: props?.metadata };
               };
 
               context.extension.on("calendar.provider.onItemCreated", listener);
@@ -340,7 +347,10 @@ this.calendar_provider = class extends ExtensionAPI {
                   convertItem(item, options, context.extension),
                   convertItem(oldItem, options, context.extension)
                 );
-                return { item: propsToItem(props), metadata: props.metadata };
+                if (props?.type) {
+                  item = propsToItem(props, item);
+                }
+                return { item, metadata: props?.metadata };
               };
 
               context.extension.on("calendar.provider.onItemUpdated", listener);
