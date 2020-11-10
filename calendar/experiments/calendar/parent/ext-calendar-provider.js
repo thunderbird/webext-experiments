@@ -5,11 +5,12 @@
 var { ExtensionCommon } = ChromeUtils.import("resource://gre/modules/ExtensionCommon.jsm");
 var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { jsmime } = ChromeUtils.import("resource:///modules/jsmime.jsm");
 
 var { ExtensionAPI, EventManager } = ExtensionCommon;
 
 class ExtCalendarProvider extends cal.provider.BaseClass {
-  QueryInterface = ChromeUtils.generateQI(["calICalendar", "calIChangeLog", "calISchedulingSupport"]);
+  QueryInterface = ChromeUtils.generateQI(["calICalendar", "calIChangeLog", "calISchedulingSupport", "calIItipTransport"]);
 
   static register(extension) {
     let calmgr = cal.getCalendarManager();
@@ -117,9 +118,47 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
           : ["unsubscribe"];
       case "requiresNetwork":
         return !(this.capabilities.requires_network === false);
+      case "itip.transport":
+        if (this.extension.emitter.has("calendar.provider.onSend")) {
+          return this;
+        }
+        break;
     }
 
     return super.getProperty(name);
+  }
+
+  scheme = "mailto";
+
+  async sendItems(aRecipients, aItipItem) {
+    let method = aItipItem.responseMethod;
+    let transport = super.getProperty("itip.transport").wrappedJSObject;
+    let { subject, body } = transport._prepareItems(aItipItem);
+    let serializer = Cc["@mozilla.org/calendar/ics-serializer;1"].createInstance(Ci.calIIcsSerializer);
+    let itemList = aItipItem.getItemList();
+    serializer.addItems(itemList, itemList.length);
+    let methodProp = cal.getIcsService().createIcalProperty("METHOD");
+    methodProp.value = method;
+    serializer.addProperty(methodProp);
+    let icsText = serializer.serializeToString();
+    let boundary = Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+    let headers = new Map();
+    headers.set("Date", [new Date()]);
+    headers.set("Subject", [subject]);
+    headers.set("To", aRecipients.map(attendee => ({ name: attendee.commonName, email: attendee.id.replace(/^mailto:/, "")})));
+    headers.set("Content-Type", ["multipart/mixed; boundary=\"" + boundary + "\""]);
+    let mimeContent = jsmime.headeremitter.emitStructuredHeaders(headers, { hardMargin: 800 }) + "\r\n";
+    mimeContent += "--" + boundary + "\r\n";
+    mimeContent += "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
+    mimeContent += body + "\r\n";
+    mimeContent += "--" + boundary + "\r\n";
+    mimeContent += "Content-Type: text/calendar; method=" + aItipItem.responseMethod + "; charset=UTF-8\r\nContent-Transfer-Encoding: 8BIT\r\n\r\n";
+    mimeContent += icsText;
+    mimeContent += "--" + boundary + "\r\n";
+    mimeContent += "Content-Type: application/ics; name=\"invite.ics\"\r\nContent-Disposition: attachment; filename=\"invite.ics\"\r\nContent-Transfer-Encoding: 8BIT\r\n\r\n";
+    mimeContent += icsText;
+    mimeContent += "--" + boundary + "--\r\n";
+    await this.extension.emit("calendar.provider.onSend", this, mimeContent, aRecipients.map(attendee => attendee.id.replace(/^mailto:/, "")));
   }
 
   addItem(aItem, aListener) {
@@ -449,6 +488,21 @@ this.calendar_provider = class extends ExtensionAPI {
               context.extension.on("calendar.provider.onResetSync", listener);
               return () => {
                 context.extension.off("calendar.provider.onResetSync", listener);
+              };
+            },
+          }).api(),
+
+          onSend: new EventManager({
+            context,
+            name: "calendar.provider.onSend",
+            register: fire => {
+              let listener = (event, calendar, content) => {
+                return fire.async(convertCalendar(context.extension, calendar), content);
+              };
+
+              context.extension.on("calendar.provider.onSend", listener);
+              return () => {
+                context.extension.off("calendar.provider.onSend", listener);
               };
             },
           }).api(),

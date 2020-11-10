@@ -88,6 +88,14 @@
         ]
       },
       {
+        "name": "onSend",
+        "type": "function",
+        "parameters": [
+          { "name": "calendar", "$ref": "calendar.calendars.Calendar" },
+          { "name": "mimeContent", "type": "string" }
+        ]
+      },
+      {
         "name": "onFreeBusy",
         "type": "function",
         "parameters": [
