@@ -119,7 +119,7 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
       case "requiresNetwork":
         return !(this.capabilities.requires_network === false);
       case "itip.transport":
-        if (this.extension.emitter.has("calendar.provider.onSend")) {
+        if (this.extension.emitter.has("calendar.provider.onBeforeSend")) {
           return this;
         }
         break;
@@ -131,14 +131,14 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
   scheme = "mailto";
 
   async sendItems(aRecipients, aItipItem) {
-    let method = aItipItem.responseMethod;
+    let responseMethod = aItipItem.responseMethod;
     let transport = super.getProperty("itip.transport").wrappedJSObject;
     let { subject, body } = transport._prepareItems(aItipItem);
     let serializer = Cc["@mozilla.org/calendar/ics-serializer;1"].createInstance(Ci.calIIcsSerializer);
     let itemList = aItipItem.getItemList();
     serializer.addItems(itemList, itemList.length);
     let methodProp = cal.getIcsService().createIcalProperty("METHOD");
-    methodProp.value = method;
+    methodProp.value = responseMethod;
     serializer.addProperty(methodProp);
     let icsText = serializer.serializeToString();
     let boundary = Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
@@ -152,13 +152,27 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
     mimeContent += "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
     mimeContent += body + "\r\n";
     mimeContent += "--" + boundary + "\r\n";
-    mimeContent += "Content-Type: text/calendar; method=" + aItipItem.responseMethod + "; charset=UTF-8\r\nContent-Transfer-Encoding: 8BIT\r\n\r\n";
+    mimeContent += "Content-Type: text/calendar; method=" + responseMethod + "; charset=UTF-8\r\nContent-Transfer-Encoding: 8BIT\r\n\r\n";
     mimeContent += icsText;
     mimeContent += "--" + boundary + "\r\n";
     mimeContent += "Content-Type: application/ics; name=\"invite.ics\"\r\nContent-Disposition: attachment; filename=\"invite.ics\"\r\nContent-Transfer-Encoding: 8BIT\r\n\r\n";
     mimeContent += icsText;
     mimeContent += "--" + boundary + "--\r\n";
-    await this.extension.emit("calendar.provider.onSend", this, mimeContent, aRecipients.map(attendee => attendee.id.replace(/^mailto:/, "")));
+    let recipients = aRecipients.map(attendee => attendee.id.replace(/^mailto:/, ""));
+    let responses = await this.extension.emit("calendar.provider.onBeforeSend", this, { responseMethod, recipients, subject, body, icsText, mimeContent });
+    for (let response of responses) {
+      if (response === true) {
+        return;
+      }
+      if (Array.isArray(response?.recipients)) {
+        for (let recipient of response.recipients) {
+          aRecipients = aRecipients.filter(attendee => attendee.id.replace(/^mailto:/, "") != recipient);
+        }
+      }
+    }
+    if (aRecipients.length) {
+      await transport.sendItems(aRecipients, aItipItem);
+    }
   }
 
   addItem(aItem, aListener) {
@@ -492,17 +506,17 @@ this.calendar_provider = class extends ExtensionAPI {
             },
           }).api(),
 
-          onSend: new EventManager({
+          onBeforeSend: new EventManager({
             context,
-            name: "calendar.provider.onSend",
+            name: "calendar.provider.onBeforeSend",
             register: fire => {
               let listener = (event, calendar, content) => {
                 return fire.async(convertCalendar(context.extension, calendar), content);
               };
 
-              context.extension.on("calendar.provider.onSend", listener);
+              context.extension.on("calendar.provider.onBeforeSend", listener);
               return () => {
-                context.extension.off("calendar.provider.onSend", listener);
+                context.extension.off("calendar.provider.onBeforeSend", listener);
               };
             },
           }).api(),

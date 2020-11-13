@@ -88,11 +88,22 @@
         ]
       },
       {
-        "name": "onSend",
+        "name": "onBeforeSend",
         "type": "function",
         "parameters": [
           { "name": "calendar", "$ref": "calendar.calendars.Calendar" },
-          { "name": "mimeContent", "type": "string" }
+          {
+            "name": "mimeContent",
+            "type": "object",
+            "properties": {
+              "responseMethod": { "type": "string" },
+              "recipients": { "type": "array", "items": { "type": "string" } },
+              "subject": { "type": "string" },
+              "body": { "type": "string" },
+              "icsText": { "type": "string" },
+              "mimeContent": { "type": "string" }
+            }
+          }
         ]
       },
       {
