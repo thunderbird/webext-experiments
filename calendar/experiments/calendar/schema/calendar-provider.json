@@ -86,6 +86,22 @@
         "parameters": [
           { "name": "calendar", "$ref": "calendar.calendars.Calendar" }
         ]
+      },
+      {
+        "name": "onFreeBusy",
+        "type": "function",
+        "parameters": [
+          {
+            "name": "FreeBusyOptions",
+            "type": "object",
+            "properties": {
+              "addressee": { "type": "string" },
+              "start": { "type": "string" },
+              "end": { "type": "string" },
+              "types": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        ]
       }
     ]
   }

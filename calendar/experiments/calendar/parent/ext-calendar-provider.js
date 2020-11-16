@@ -258,6 +258,34 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
   }
 }
 
+class ExtFreeBusyProvider {
+  QueryInterface = ChromeUtils.generateQI(["calIFreeBusyProvider"]);
+
+  constructor(fire) {
+    this.fire = fire;
+  }
+
+  async getFreeBusyIntervals(aCalId, aRangeStart, aRangeEnd, aBusyTypes, aListener) {
+    try {
+      const TYPE_MAP = {
+        free: Ci.calIFreeBusyInterval.FREE,
+        busy: Ci.calIFreeBusyInterval.BUSY,
+        unavailable: Ci.calIFreeBusyInterval.BUSY_UNAVAILABLE,
+        tentative: Ci.calIFreeBusyInterval.BUSY_TENTATIVE,
+      };
+      let attendee = aCalId.replace(/^mailto:/, "");
+      let start = aRangeStart.icalString;
+      let end = aRangeEnd.icalString;
+      let types = ["free", "busy", "unavailable", "tentative"].filter((type, index) => aBusyTypes & 1 << index);
+      let results = await this.fire.async({ attendee, start, end, types });
+      aListener.onResult({ status: Cr.NS_OK }, results.map(interval => new cal.provider.FreeBusyInterval(aCalId, TYPE_MAP[interval.type], cal.createDateTime(interval.start), cal.createDateTime(interval.end))));
+    } catch (e) {
+      console.error(e);
+      aListener.onResult({ status: e.result || Cr.NS_ERROR_FAILURE }, e.message || e);
+    }
+  }
+}
+
 this.calendar_provider = class extends ExtensionAPI {
   onStartup() {
     if (this.extension.manifest.calendar_provider) {
@@ -406,6 +434,19 @@ this.calendar_provider = class extends ExtensionAPI {
               context.extension.on("calendar.provider.onResetSync", listener);
               return () => {
                 context.extension.off("calendar.provider.onResetSync", listener);
+              };
+            },
+          }).api(),
+
+          onFreeBusy: new EventManager({
+            context,
+            name: "calendar.provider.onFreeBusy",
+            register: fire => {
+              let provider = new ExtFreeBusyProvider(fire);
+              cal.getFreeBusyService().addProvider(provider);
+
+              return () => {
+                cal.getFreeBusyService().removeProvider(provider);
               };
             },
           }).api(),
