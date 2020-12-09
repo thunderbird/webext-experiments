@@ -86,16 +86,15 @@ function convertCalendar(extension, calendar) {
     props.cacheId = calendar.superCalendar.id + "#cache";
     props.capabilities = unwrapCalendar(calendar.superCalendar).capabilities; // TODO needs deep clone?
     if (calendar instanceof Ci.calISyncWriteCalendar) {
-      props.metadata = {
-        ids: calendar.getAllMetaDataIds(),
-        values: calendar.getAllMetaDataValues().map(value => {
-          try {
-            return JSON.parse(value) ?? {};
-          } catch (ex) {
-            return {};
-          }
-        }),
-      };
+      let ids = calendar.getAllMetaDataIds();
+      props.metadata = {};
+      for (let [index, value] of calendar.getAllMetaDataValues().entries()) {
+        try {
+          props.metadata[ids[index]] = JSON.parse(value) ?? {};
+        } catch (ex) {
+          props.metadata[ids[index]] = {};
+        }
+      }
     }
   }
 
