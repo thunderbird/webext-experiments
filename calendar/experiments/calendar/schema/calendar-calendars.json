@@ -175,7 +175,14 @@
         "async": true,
         "type": "function",
         "parameters": [
-          { "type": "string", "name": "id", "optional": true }
+          {
+            "optional": true,
+            "name": "ids",
+            "choices": [
+              { "type": "string" },
+              { "type": "array", "items": { "type": "string" } }
+            ]
+          }
         ]
       }
     ],
