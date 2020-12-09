@@ -18,7 +18,6 @@ this.calendar_calendars = class extends ExtensionAPI {
       getResolvedCalendarById,
       isOwnCalendar,
       convertCalendar,
-      findIdentityKey,
     } = ChromeUtils.import(this.extension.rootURI.resolve("experiments/calendar/ext-calendar-utils.jsm"));
 
     return {
@@ -81,7 +80,15 @@ this.calendar_calendars = class extends ExtensionAPI {
             }
           },
           create: async function(createProperties) {
-            let key = findIdentityKey(createProperties.email);
+            if (createProperties.identity) {
+              if (!context.extension.hasPermission("accountsRead")) {
+                throw new ExtensionError('Using identities requires the "accountsRead" permission');
+              }
+
+              if (!MailServices.accounts.allIdentities.some(i => i.key == createProperties.identity)) {
+                throw new ExtensionError(`Identity not found: ${createProperties.identity}`);
+              }
+            }
 
             let calendar = calmgr.createCalendar(
               createProperties.type,
@@ -95,8 +102,8 @@ this.calendar_calendars = class extends ExtensionAPI {
             if (createProperties.color != null) {
               calendar.setProperty("color", createProperties.color);
             }
-            if (key) {
-              calendar.setProperty("imip.identity.key", key);
+            if (createProperties.identity != null) {
+              calendar.setProperty("imip.identity.key", createProperties.identity);
             }
 
             calmgr.registerCalendar(calendar);
@@ -116,6 +123,16 @@ this.calendar_calendars = class extends ExtensionAPI {
             if (updateProperties.url && !isOwnCalendar(calendar, context.extension)) {
               throw new ExtensionError("Cannot update url for foreign calendars");
             }
+            if (updateProperties.identity) {
+              if (!context.extension.hasPermission("accountsRead")) {
+                throw new ExtensionError('Using identities requires the "accountsRead" permission');
+              }
+
+              if (!MailServices.accounts.allIdentities.some(i => i.key == updateProperties.identity)) {
+                throw new ExtensionError(`Identity not found: ${updateProperties.identity}`);
+              }
+            }
+
 
             if (updateProperties.url) {
               calendar.uri = Services.io.newURI(updateProperties.url);
@@ -131,8 +148,8 @@ this.calendar_calendars = class extends ExtensionAPI {
               }
             }
 
-            if (updateProperties.email != null) {
-              calendar.setProperty("imip.identity.key", findIdentityKey(updateProperties.email));
+            if (updateProperties.identity != null) {
+              calendar.setProperty("imip.identity.key", updateProperties.identity);
             }
 
             // TODO capabilities merging
@@ -222,8 +239,7 @@ this.calendar_calendars = class extends ExtensionAPI {
                       fire.sync(converted, { enabled: !value });
                       break;
                     case "imip.identity.key":
-                      let identity = calendar.getProperty("imip.identity");
-                      fire.sync(converted, { email: identity?.email });
+                      fire.sync(converted, { identity: value });
                       break;
                   }
                 },
