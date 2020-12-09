@@ -165,14 +165,19 @@ this.calendar_calendars = class extends ExtensionAPI {
             calendar.wrappedJSObject.mObservers.notify("onLoad", [calendar]);
           },
 
-          synchronize: function(id) {
+          synchronize: function(ids) {
             let calendars = [];
-            if (id) {
-              let calendar = calmgr.getCalendarById(id);
-              if (!calendar) {
-                throw new ExtensionError(`Invalid calendar id: ${id}`);
+            if (ids) {
+              if (!Array.isArray(ids)) {
+                ids = [ids];
               }
-              calendars.push(calendar);
+              for (let id of ids) {
+                let calendar = calmgr.getCalendarById(id);
+                if (!calendar) {
+                  throw new ExtensionError(`Invalid calendar id: ${id}`);
+                }
+                calendars.push(calendar);
+              }
             } else {
               for (let calendar of cal.getCalendarManager().getCalendars()) {
                 if (calendar.getProperty("calendar-main-in-composite")) {
