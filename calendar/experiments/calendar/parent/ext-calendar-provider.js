@@ -283,7 +283,11 @@ class ExtFreeBusyProvider {
       let end = aRangeEnd.icalString;
       let types = ["free", "busy", "unavailable", "tentative"].filter((type, index) => aBusyTypes & 1 << index);
       let results = await this.fire.async({ attendee, start, end, types });
-      aListener.onResult({ status: Cr.NS_OK }, results.map(interval => new cal.provider.FreeBusyInterval(aCalId, TYPE_MAP[interval.type], cal.createDateTime(interval.start), cal.createDateTime(interval.end))));
+      aListener.onResult({ status: Cr.NS_OK }, results.map(interval =>
+        new cal.provider.FreeBusyInterval(aCalId,
+                                          TYPE_MAP[interval.type],
+                                          cal.createDateTime(interval.start),
+                                          cal.createDateTime(interval.end))));
     } catch (e) {
       console.error(e);
       aListener.onResult({ status: e.result || Cr.NS_ERROR_FAILURE }, e.message || e);
