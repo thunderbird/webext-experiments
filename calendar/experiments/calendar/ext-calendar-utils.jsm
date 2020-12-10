@@ -221,7 +221,7 @@ function propsToItem(props, baseItem) {
       if (props.endTimezone) {
         item.endDate = item.endDate.getInTimezone(getTimezone(props.endTimezone));
       }
-      if (props.isAllDayEvent) {
+      if (props.allday) {
         item.startDate.isDate = true;
         item.endDate.isDate = true;
       }
@@ -238,8 +238,8 @@ function propsToItem(props, baseItem) {
       if (props.percentComplete != null) {
         item.percentComplete = props.percentComplete;
       }
-      if (props.isCompleted != null) {
-        item.isCompleted = props.isCompleted;
+      if (props.completed != null) {
+        item.isCompleted = props.completed;
       }
       if (props.duration != null) {
         item.duration = props.duration ? cal.createDuration(props.duration) : null;
@@ -468,13 +468,13 @@ function convertItem(item, options, extension) {
         props.endTimezone = cal.dtz.defaultTimezone.tzid;
       }
     }
-    props.isAllDayEvent = item.startDate.isDate;
+    props.allday = item.startDate.isDate;
   } else if (props.type == "task") {
     props.entryDate = item.entryDate?.icalString || "";
     props.dueDate = item.dueDate?.icalString || "";
     props.completedDate = item.completedDate?.icalString || "";
     props.percentComplete = item.percentComplete;
-    props.isCompleted = item.isCompleted;
+    props.completed = item.isCompleted;
     props.duration = item.duration?.icalString || "";
   }
 
