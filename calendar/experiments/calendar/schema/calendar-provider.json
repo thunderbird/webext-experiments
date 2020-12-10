@@ -98,7 +98,13 @@
               "addressee": { "type": "string" },
               "start": { "type": "string" },
               "end": { "type": "string" },
-              "types": { "type": "array", "items": { "type": "string" } }
+              "types": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["free", "busy", "unavailable", "tentative"]
+                }
+              }
             }
           }
         ]
