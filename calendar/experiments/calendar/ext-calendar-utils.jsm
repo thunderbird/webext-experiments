@@ -79,6 +79,7 @@ function convertCalendar(extension, calendar) {
     readOnly: calendar.readOnly,
     enabled: !calendar.getProperty("disabled"),
     color: calendar.getProperty("color") || "#A8C2E1",
+    identity: calendar.getProperty("imip.identity.key"),
   };
 
   if (isOwnCalendar(calendar, extension)) {

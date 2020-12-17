@@ -81,6 +81,16 @@ this.calendar_calendars = class extends ExtensionAPI {
             }
           },
           create: async function(createProperties) {
+            if (createProperties.identity) {
+              if (!context.extension.hasPermission("accountsRead")) {
+                throw new ExtensionError('Using identities requires the "accountsRead" permission');
+              }
+
+              if (!MailServices.accounts.allIdentities.some(i => i.key == createProperties.identity)) {
+                throw new ExtensionError(`Identity not found: ${createProperties.identity}`);
+              }
+            }
+
             let calendar = calmgr.createCalendar(
               createProperties.type,
               Services.io.newURI(createProperties.url)
@@ -90,8 +100,11 @@ this.calendar_calendars = class extends ExtensionAPI {
             }
 
             calendar.name = createProperties.name;
-            if (typeof createProperties.color != "undefined") {
+            if (createProperties.color != null) {
               calendar.setProperty("color", createProperties.color);
+            }
+            if (createProperties.identity != null) {
+              calendar.setProperty("imip.identity.key", createProperties.identity);
             }
 
             calmgr.registerCalendar(calendar);
@@ -111,6 +124,16 @@ this.calendar_calendars = class extends ExtensionAPI {
             if (updateProperties.url && !isOwnCalendar(calendar, context.extension)) {
               throw new ExtensionError("Cannot update url for foreign calendars");
             }
+            if (updateProperties.identity) {
+              if (!context.extension.hasPermission("accountsRead")) {
+                throw new ExtensionError('Using identities requires the "accountsRead" permission');
+              }
+
+              if (!MailServices.accounts.allIdentities.some(i => i.key == updateProperties.identity)) {
+                throw new ExtensionError(`Identity not found: ${updateProperties.identity}`);
+              }
+            }
+
 
             if (updateProperties.url) {
               calendar.uri = Services.io.newURI(updateProperties.url);
@@ -124,6 +147,10 @@ this.calendar_calendars = class extends ExtensionAPI {
               if (updateProperties[prop] != null) {
                 calendar.setProperty(prop, updateProperties[prop]);
               }
+            }
+
+            if (updateProperties.identity != null) {
+              calendar.setProperty("imip.identity.key", updateProperties.identity);
             }
 
             // TODO capabilities merging
@@ -211,6 +238,9 @@ this.calendar_calendars = class extends ExtensionAPI {
                       break;
                     case "disabled":
                       fire.sync(converted, { enabled: !value });
+                      break;
+                    case "imip.identity.key":
+                      fire.sync(converted, { identity: value });
                       break;
                   }
                 },
