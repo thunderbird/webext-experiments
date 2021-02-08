@@ -5,11 +5,12 @@
 var { ExtensionCommon } = ChromeUtils.import("resource://gre/modules/ExtensionCommon.jsm");
 var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
 var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { jsmime } = ChromeUtils.import("resource:///modules/jsmime.jsm");
 
 var { ExtensionAPI, EventManager } = ExtensionCommon;
 
 class ExtCalendarProvider extends cal.provider.BaseClass {
-  QueryInterface = ChromeUtils.generateQI(["calICalendar", "calIChangeLog", "calISchedulingSupport"]);
+  QueryInterface = ChromeUtils.generateQI(["calICalendar", "calIChangeLog", "calISchedulingSupport", "calIItipTransport"]);
 
   static register(extension) {
     let calmgr = cal.getCalendarManager();
@@ -117,9 +118,36 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
           : ["unsubscribe"];
       case "requiresNetwork":
         return !(this.capabilities.requires_network === false);
+      case "itip.transport":
+        if (this.extension.emitter.has("calendar.provider.onBeforeSend")) {
+          return this;
+        }
+        break;
     }
 
     return super.getProperty(name);
+  }
+
+  scheme = "mailto";
+
+  async sendItems(aRecipients, aItipItem) {
+    let transport = super.getProperty("itip.transport").wrappedJSObject;
+    let { subject, body } = transport._prepareItems(aItipItem);
+    let recipients = aRecipients.map(attendee => ({ name: attendee.commonName, email: attendee.id.replace(/^mailto:/, "")}));
+    let responses = await this.extension.emit("calendar.provider.onBeforeSend", this, aItipItem, { recipients, subject, body });
+    for (let response of responses) {
+      if (response === true) {
+        return;
+      }
+      if (Array.isArray(response?.recipients)) {
+        for (let recipient of response.recipients) {
+          aRecipients = aRecipients.filter(attendee => attendee.id.replace(/^mailto:/, "") != recipient.email);
+        }
+      }
+    }
+    if (aRecipients.length) {
+      await transport.sendItems(aRecipients, aItipItem);
+    }
   }
 
   addItem(aItem, aListener) {
@@ -449,6 +477,54 @@ this.calendar_provider = class extends ExtensionAPI {
               context.extension.on("calendar.provider.onResetSync", listener);
               return () => {
                 context.extension.off("calendar.provider.onResetSync", listener);
+              };
+            },
+          }).api(),
+
+          onBeforeSend: new EventManager({
+            context,
+            name: "calendar.provider.onBeforeSend",
+            register: (fire, options) => {
+              let listener = (event, calendar, itipItem, content) => {
+                content.responseMethod = itipItem.responseMethod;
+                if (["ics", "mime"].includes(options?.returnFormat)) {
+                  let serializer = Cc["@mozilla.org/calendar/ics-serializer;1"].createInstance(Ci.calIIcsSerializer);
+                  serializer.addItems(itipItem.getItemList());
+                  let methodProp = cal.getIcsService().createIcalProperty("METHOD");
+                  methodProp.value = content.responseMethod;
+                  serializer.addProperty(methodProp);
+                  let icsText = serializer.serializeToString();
+                  if (options.returnFormat == "mime") {
+                    let boundary = Array.from({ length: 24 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
+                    let headers = new Map();
+                    headers.set("Date", [new Date()]);
+                    headers.set("Subject", [content.subject]);
+                    headers.set("To", content.recipients);
+                    headers.set("Content-Type", ["multipart/mixed; boundary=\"" + boundary + "\""]);
+                    let mimeContent = jsmime.headeremitter.emitStructuredHeaders(headers, { hardMargin: 800 }) + "\r\n";
+                    mimeContent += "--" + boundary + "\r\n";
+                    mimeContent += "Content-Type: text/plain; charset=UTF-8\r\n\r\n";
+                    mimeContent += content.body + "\r\n";
+                    mimeContent += "--" + boundary + "\r\n";
+                    mimeContent += "Content-Type: text/calendar; method=" + content.responseMethod + "; charset=UTF-8\r\nContent-Transfer-Encoding: 8BIT\r\n\r\n";
+                    mimeContent += icsText;
+                    mimeContent += "--" + boundary + "\r\n";
+                    mimeContent += "Content-Type: application/ics; name=\"invite.ics\"\r\nContent-Disposition: attachment; filename=\"invite.ics\"\r\nContent-Transfer-Encoding: 8BIT\r\n\r\n";
+                    mimeContent += icsText;
+                    mimeContent += "--" + boundary + "--\r\n";
+                    content.mimeContent = mimeContent;
+                  } else {
+                    content.icsText = icsText;
+                  }
+                } else {
+                  content.items = itipItem.getItemList().map(item => convertItem(item, options, context.extension));
+                }
+                return fire.async(convertCalendar(context.extension, calendar), content);
+              };
+
+              context.extension.on("calendar.provider.onBeforeSend", listener);
+              return () => {
+                context.extension.off("calendar.provider.onBeforeSend", listener);
               };
             },
           }).api(),

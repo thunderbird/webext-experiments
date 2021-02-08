@@ -88,6 +88,48 @@
         ]
       },
       {
+        "name": "onBeforeSend",
+        "type": "function",
+        "parameters": [
+          { "name": "calendar", "$ref": "calendar.calendars.Calendar" },
+          {
+            "name": "content",
+            "type": "object",
+            "properties": {
+              "responseMethod": { "type": "string" },
+              "recipients": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "email": { "type": "string" }
+                  }
+                }
+              },
+              "subject": { "type": "string" },
+              "body": { "type": "string" },
+              "items": { "type": "array", "items": { "$ref": "calendar.items.CalendarItem" }, "optional": true },
+              "icsText": { "type": "string", "optional": true },
+              "mimeContent": { "type": "string", "optional": true }
+            }
+          }
+        ],
+        "extraParameters": [
+          {
+            "type": "object",
+            "optional": true,
+            "properties": {
+              "returnFormat": {
+                "optional": true,
+                "type": "string",
+                "enum": ["ical", "jcal", "ics", "mime"]
+              }
+            }
+          }
+        ]
+      },
+      {
         "name": "onFreeBusy",
         "type": "function",
         "parameters": [
