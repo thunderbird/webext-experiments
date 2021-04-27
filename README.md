@@ -2,7 +2,7 @@ Thunderbird WebExtension Experiments
 ====================================
 Thunderbird is starting to provide an API similar to Firefox's WebExtensions. There is overlapping
 API for commonly used elements like windows and tabs, but there will also be mail-specific APIs to
-provide access to E-Mails and Thunderbird-specific features like the Cloudfile Providers.
+provide access to E-Mails and Thunderbird-specific features like the Calendar.
 
 This repository serves as a starting point for experimenting with new APIs before we push them to
 nightly builds, and should also serve as examples for add-on developers wanting to create their own
@@ -16,7 +16,6 @@ build when testing and developing WebExtension Experiments.
 
 | Name                               | Author                                           | Description
 | ---------------------------------- | ------------------------------------------------ | --------------
-| [cloudfile](./cloudfile/)          | [@kewisch](https://github.com/kewisch/)          | Experiment with add-on exposing the Cloudfile feature
 | [calendar](./calendar/)            | [@kewisch](https://github.com/kewisch/)          | Draft for calendar-related APIs in Thunderbird
 
 
