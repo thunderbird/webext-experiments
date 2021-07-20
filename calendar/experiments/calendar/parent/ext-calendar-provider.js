@@ -103,8 +103,8 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
           ? this.capabilities.privacy?.map(val => val.toUpperCase())
           : ["PUBLIC", "CONFIDENTIAL", "PRIVATE"];
       case "capabilities.categories.maxCount":
-        return Number.isInteger(this.capabilities.categories?.count)
-          && this.capabilities.categories.count >= 0
+        return Number.isInteger(this.capabilities.categories?.count) &&
+          this.capabilities.categories.count >= 0
           ? this.capabilities.categories?.count
           : null;
       case "capabilities.alarms.maxCount":
@@ -291,9 +291,9 @@ class ExtFreeBusyProvider {
       let results = await this.fire.async({ attendee, start, end, types });
       aListener.onResult({ status: Cr.NS_OK }, results.map(interval =>
         new cal.provider.FreeBusyInterval(aCalId,
-                                          TYPE_MAP[interval.type],
-                                          cal.createDateTime(interval.start),
-                                          cal.createDateTime(interval.end))));
+          TYPE_MAP[interval.type],
+          cal.createDateTime(interval.start),
+          cal.createDateTime(interval.end))));
     } catch (e) {
       console.error(e);
       aListener.onResult({ status: e.result || Cr.NS_ERROR_FAILURE }, e.message || e);

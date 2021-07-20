@@ -3,7 +3,7 @@
   "name": "Calendar MailExtensions API Draft",
   "author": "Philipp Kewisch",
   "description": "Draft experiment for Thunderbird MailExtensions covering calendaring",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "applications": {
     "gecko": {
       "id": "ext-calendar-draft@mozilla.kewis.ch"
@@ -41,6 +41,12 @@
     }
   },
 
+  "calendar_item_action": {
+    "default_icon": "addon.png",
+    "default_popup": "content/calendar-item-action.html",
+    "default_title": "Calendar Item Action"
+  },
+
   "background": {
     "scripts": [
       "background.js"
@@ -76,6 +82,17 @@
         "events": ["startup"],
         "paths": [
           ["calendar", "provider"]
+        ]
+      }
+    },
+    "calendarItemAction": {
+      "schema": "experiments/calendar/schema/calendarItemAction.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "script": "experiments/calendar/parent/ext-calendarItemAction.js",
+        "events": ["startup"],
+        "paths": [
+          ["calendarItemAction"]
         ]
       }
     }
