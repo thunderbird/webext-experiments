@@ -126,7 +126,10 @@ this.calendar_calendars = class extends ExtensionAPI {
               }
             }
 
-            // TODO capabilities merging
+            if (updateProperties.capabilities) {
+              // TODO validate capability names
+              calendar.capabilities = Object.assign({}, calendar.capabilities, updateProperties.capabilities);
+            }
           },
           remove: async function(id) {
             let calendar = calmgr.getCalendarById(id);

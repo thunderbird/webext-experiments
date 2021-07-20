@@ -76,6 +76,12 @@ class ExtCalendarProvider extends cal.provider.BaseClass {
       case "cache.always":
         return true;
 
+      case "organizerId":
+        if (this.capabilities.organizer) {
+          return this.capabilities.organizer;
+        }
+        break;
+
       case "readOnly":
         if (this.capabilities.mutable === false) {
           return true;
