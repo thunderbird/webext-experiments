@@ -95,6 +95,17 @@
           ["calendarItemAction"]
         ]
       }
+    },
+    "calendarItemDetails": {
+      "schema": "experiments/calendar/schema/calendarItemDetails.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "script": "experiments/calendar/parent/ext-calendarItemDetails.js",
+        "events": ["startup"],
+        "paths": [
+          ["calendarItemDetails"]
+        ]
+      }
     }
   }
 }
