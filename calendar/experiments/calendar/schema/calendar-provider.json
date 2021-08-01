@@ -117,6 +117,17 @@
             }
           }
         ]
+      },
+      {
+        "name": "onDetectCalendars",
+        "type": "function",
+        "parameters": [
+          { "name": "username", "type": "string" },
+          { "name": "password", "type": "string" },
+          { "name": "location", "type": "string" },
+          { "name": "savePassword", "type": "boolean" },
+          { "name": "extraProperties", "type": "object" }
+        ]
       }
     ]
   }
