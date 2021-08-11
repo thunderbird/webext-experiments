@@ -22,6 +22,16 @@
   },
   {
     "namespace": "calendar.provider",
+    "functions": [
+      {
+        "name": "getAllMetadata",
+        "async": true,
+        "type": "function",
+        "parameters": [
+          { "type": "string", "name": "id" }
+        ]
+      }
+    ],
     "events": [
       {
         "name": "onItemCreated",

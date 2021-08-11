@@ -303,11 +303,28 @@ this.calendar_provider = class extends ExtensionAPI {
       propsToItem,
       convertItem,
       convertCalendar,
+      unwrapCalendar,
     } = ChromeUtils.import(this.extension.rootURI.resolve("experiments/calendar/ext-calendar-utils.jsm"));
 
     return {
       calendar: {
         provider: {
+          getAllMetadata: async function(id) {
+            let calendar = unwrapCalendar(calmgr.getCalendarById(id));
+            if (calendar.offlineStorage && isOwnCalendar(calendar, context.extension)) {
+              let ids = calendar.offlineStorage.getAllMetaDataIds();
+              let metadata = {};
+              for (let [index, value] of calendar.getAllMetaDataValues().entries()) {
+                try {
+                  props.metadata[ids[index]] = JSON.parse(value) ?? {};
+                } catch (ex) {
+                  props.metadata[ids[index]] = {};
+                }
+              }
+              return metadata;
+            }
+            return null;
+          },
           onItemCreated: new EventManager({
             context,
             name: "calendar.provider.onItemCreated",
