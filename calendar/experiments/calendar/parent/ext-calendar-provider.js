@@ -378,17 +378,44 @@ this.calendar_provider = class extends ExtensionAPI {
       this.onManifestEntry("calendar_provider");
     }
 
+    const { setupE10sBrowser } = ChromeUtils.import(this.extension.rootURI.resolve("experiments/calendar/ext-calendar-utils.jsm"));
+
+    ChromeUtils.registerWindowActor("CalendarProvider", { child: { moduleURI: this.extension.rootURI.resolve("experiments/calendar/child/ext-calendar-provider-actor.jsm") } });
+
     ExtensionSupport.registerWindowListener("ext-calendar-provider-" + this.extension.id, {
       chromeURLs: ["chrome://calendar/content/calendar-creation.xhtml"],
       onLoadWindow: (win) => {
         let provider = this.extension.manifest.calendar_provider;
         if (provider.creation_panel) {
+          // Do our own browser setup to avoid a bug
+          win.setUpAddonCalendarSettingsPanel = (calendarType) => {
+            let panel = win.document.getElementById("panel-addon-calendar-settings");
+            panel.setAttribute("flex", "1");
+
+            let browser = panel.lastElementChild;
+            let loadPromise = Promise.resolve();
+            if (!browser) {
+              browser = win.document.createXULElement("browser");
+              browser.setAttribute("transparent", "true");
+              browser.setAttribute("flex", "1");
+              loadPromise = setupE10sBrowser(this.extension, browser, panel, { maxWidth: undefined, maxHeight: undefined, allowScriptsToClose: false });
+            }
+
+            loadPromise.then(() => {
+              browser.loadURI(calendarType.panelSrc, { triggeringPrincipal: this.extension.principal });
+            });
+
+            win.gButtonHandlers.forNodeId["panel-addon-calendar-settings"].accept = calendarType.onCreated;
+          };
+
           win.registerCalendarType({
             label: this.extension.localize(provider.name),
             panelSrc: this.extension.getURL(this.extension.localize(provider.creation_panel)),
             onCreated: () => {
-              // let browser = win.document.getElementById("panel-addon-calendar-settings").lastElementChild;
-              // TODO do something to create the calendar here
+              // TODO temporary
+              let browser = win.document.getElementById("panel-addon-calendar-settings").lastElementChild;
+              let actor = browser.browsingContext.currentWindowGlobal.getActor("CalendarProvider");
+              actor.sendAsyncMessage("postMessage", { message: "create", origin: this.extension.getURL("") });
             }
           });
         }
@@ -400,6 +427,7 @@ this.calendar_provider = class extends ExtensionAPI {
       return;
     }
     ExtensionSupport.unregisterWindowListener("ext-calendar-provider-" + this.extension.id);
+    ChromeUtils.unregisterWindowActor("CalendarProvider");
 
     if (this.extension.manifest.calendar_provider) {
       ExtCalendarProvider.unregister(this.extension);
