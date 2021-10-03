@@ -372,7 +372,7 @@ class ExtFreeBusyProvider {
       let attendee = aCalId.replace(/^mailto:/, "");
       let start = aRangeStart.icalString;
       let end = aRangeEnd.icalString;
-      let types = ["free", "busy", "unavailable", "tentative"].filter((type, index) => aBusyTypes & 1 << index);
+      let types = ["free", "busy", "unavailable", "tentative"].filter((type, index) => aBusyTypes & (1 << index));
       let results = await this.fire.async({ attendee, start, end, types });
       aListener.onResult({ status: Cr.NS_OK }, results.map(interval =>
         new cal.provider.FreeBusyInterval(aCalId,
