@@ -119,9 +119,8 @@ setTimeout(async () => {
   gotitems = await lightning.items.query({ type: "task" });
   console.log("Queried all tasks (expect empty)", gotitems);
 
-  gotitems = await lightning.items.query({ type: "task" });
-  console.log("Queried all tasks (expect empty)", gotitems);
-
+  gotitems = await lightning.items.query({ type: "event" });
+  console.log("Queried all events (expect item)", gotitems);
 
   let rangeStartJs = new Date();
   let rangeEndJs = new Date();

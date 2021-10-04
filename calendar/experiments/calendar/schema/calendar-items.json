@@ -97,7 +97,8 @@
               },
               "type": { "type": "string", "enum": ["event", "task"], "optional": true },
               "rangeStart": { "type": "string", "optional": true },
-              "rangeEnd": { "type": "string", "optional": true }
+              "rangeEnd": { "type": "string", "optional": true },
+              "expand": { "type": "boolean", "optional": true }
             }
           }
         ]
