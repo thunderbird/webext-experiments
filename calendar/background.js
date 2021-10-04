@@ -110,6 +110,35 @@ setTimeout(async () => {
   let gotitem = await lightning.items.get(calendar2.id, "findme");
   console.log("Retrieved item", gotitem);
 
+  let gotitems = await lightning.items.query({ calendarId: calendar2.id });
+  console.log("Queried all items in calendar", gotitems);
+
+  gotitems = await lightning.items.query({ id: "findme" });
+  console.log("Queried all items with id findme", gotitems);
+
+  gotitems = await lightning.items.query({ type: "task" });
+  console.log("Queried all tasks (expect empty)", gotitems);
+
+  gotitems = await lightning.items.query({ type: "task" });
+  console.log("Queried all tasks (expect empty)", gotitems);
+
+
+  let rangeStartJs = new Date();
+  let rangeEndJs = new Date();
+
+  rangeEndJs.setFullYear(rangeEndJs.getFullYear() - 1);
+
+  gotitems = await lightning.items.query({ rangeEnd: icalDate(rangeEndJs) });
+  console.log("Queried past items (expect empty)", gotitems);
+
+  rangeStartJs = new Date();
+  rangeEndJs = new Date();
+  rangeStartJs.setFullYear(rangeStartJs.getFullYear() - 1);
+  rangeEndJs.setFullYear(rangeEndJs.getFullYear() + 1);
+
+  gotitems = await lightning.items.query({ rangeStart: icalDate(rangeStartJs), rangeEnd: icalDate(rangeEndJs) });
+  console.log("Queried within year range (expect item)", gotitems);
+
   let [home, ...rest] = await lightning.calendars.query({ type: "storage" });
   console.log("queried calendars", home, rest);
 
@@ -133,7 +162,7 @@ setTimeout(async () => {
 
 
     await new Promise(resolve => setTimeout(resolve, 500));
-
+    // Moving & Removing
     let home2 = await lightning.calendars.create({
       type: "storage",
       url: "moz-storage-calendar://",
