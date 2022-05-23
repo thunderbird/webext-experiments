@@ -59,12 +59,11 @@ function unwrapCalendar(calendar) {
 
 function getResolvedCalendarById(extension, id) {
   let calendar;
-  let calmgr = cal.getCalendarManager();
   if (id.endsWith("#cache")) {
-    let cached = calmgr.getCalendarById(id.substring(0, id.length - 6));
+    let cached = cal.manager.getCalendarById(id.substring(0, id.length - 6));
     calendar = cached && isOwnCalendar(cached, extension) && cached.wrappedJSObject.mCachedCalendar;
   } else {
-    calendar = calmgr.getCalendarById(id);
+    calendar = cal.manager.getCalendarById(id);
   }
 
   if (!calendar) {

@@ -2,11 +2,9 @@
 
 module.exports = {
   env: {
-    es6: true,
-    webextensions: true
+    webextensions: true,
+    es2022: true
   },
-  parser: "babel-eslint",
-  parserOptions: { ecmaVersion: 11 },
   globals: {
     messenger: true,
     browser: true
