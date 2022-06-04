@@ -2,11 +2,8 @@
 
 module.exports = {
   "env": {
-    "es6": true,
+    "es2022": true,
     "webextensions": true
-  },
-  "parserOptions": {
-    "ecmaVersion": 8
   },
   "globals": {
     "self": true
