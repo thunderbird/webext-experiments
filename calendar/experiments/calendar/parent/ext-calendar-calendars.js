@@ -2,14 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionCommon } = ChromeUtils.import("resource://gre/modules/ExtensionCommon.jsm");
-var { ExtensionUtils } = ChromeUtils.import("resource://gre/modules/ExtensionUtils.jsm");
+var {
+  ExtensionCommon: { ExtensionAPI, EventManager }
+} = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
+var {
+  ExtensionUtils: { ExtensionError }
+} = ChromeUtils.importESModule("resource://gre/modules/ExtensionUtils.sys.mjs");
 
-var { ExtensionAPI, EventManager } = ExtensionCommon;
-var { ExtensionError } = ExtensionUtils;
-
-var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 this.calendar_calendars = class extends ExtensionAPI {
   getAPI(context) {
@@ -18,7 +18,7 @@ this.calendar_calendars = class extends ExtensionAPI {
       getResolvedCalendarById,
       isOwnCalendar,
       convertCalendar,
-    } = ChromeUtils.import("resource://experiment-calendar/experiments/calendar/ext-calendar-utils.jsm");
+    } = ChromeUtils.importESModule("resource://tb-experiments-calendar/experiments/calendar/ext-calendar-utils.sys.mjs");
 
     return {
       calendar: {
@@ -30,7 +30,7 @@ this.calendar_calendars = class extends ExtensionAPI {
             if (url) {
               try {
                 pattern = new MatchPattern(url, { restrictSchemes: false });
-              } catch (e) {
+              } catch {
                 throw new ExtensionError(`Invalid url pattern: ${url}`);
               }
             }
@@ -127,7 +127,18 @@ this.calendar_calendars = class extends ExtensionAPI {
 
             if (updateProperties.capabilities) {
               // TODO validate capability names
-              calendar.capabilities = Object.assign({}, calendar.capabilities, updateProperties.capabilities);
+              let unwrappedCalendar = calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject;
+              unwrappedCalendar.capabilities = Object.assign({}, unwrappedCalendar.capabilities, updateProperties.capabilities);
+            }
+
+            if (updateProperties.lastError !== undefined) {
+              if (updateProperties.lastError === null) {
+                calendar.setProperty("currentStatus", Cr.NS_ERROR_FAILURE);
+                calendar.setProperty("lastErrorMessage", updateProperties.lastError);
+              } else {
+                calendar.setProperty("currentStatus", Cr.NS_OK);
+                calendar.setProperty("lastErrorMessage", "");
+              }
             }
           },
           remove: async function(id) {
