@@ -4,7 +4,7 @@
   "author": "Philipp Kewisch",
   "description": "Draft experiment for Thunderbird MailExtensions covering calendaring",
   "version": "2.2.0",
-  "applications": {
+  "browser_specific_settings": {
     "gecko": {
       "id": "ext-calendar-draft@mozilla.kewis.ch"
     }
@@ -44,7 +44,8 @@
   "calendar_item_action": {
     "default_icon": "addon.png",
     "default_popup": "content/calendar-item-action.html",
-    "default_title": "Calendar Item Action"
+    "default_title": "Calendar Item Action",
+    "type": "button"
   },
 
   "background": {

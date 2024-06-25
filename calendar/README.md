@@ -12,5 +12,5 @@ reliable API documentation please see the relevant [schema files](./schema/).
 | ------------- | --------
 | Description   | Experiment and add-on for calendar-related APIs in Thunderbird.
 | Status        | Draft
-| Compatibility | Thunderbird 91 (possibly Thunderbird 78)
+| Compatibility | Thunderbird 128
 | Tracking      | [bug 1627205](https://bugzilla.mozilla.org/show_bug.cgi?id=1627205)

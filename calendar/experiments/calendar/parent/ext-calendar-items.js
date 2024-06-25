@@ -2,12 +2,14 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionCommon } = ChromeUtils.import("resource://gre/modules/ExtensionCommon.jsm");
-var { ExtensionUtils } = ChromeUtils.import("resource://gre/modules/ExtensionUtils.jsm");
-var { cal } = ChromeUtils.import("resource:///modules/calendar/calUtils.jsm");
+var {
+  ExtensionCommon: { ExtensionAPI, EventManager }
+} = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
+var {
+  ExtensionUtils: { ExtensionError }
+} = ChromeUtils.importESModule("resource://gre/modules/ExtensionUtils.sys.mjs");
 
-var { ExtensionAPI, EventManager } = ExtensionCommon;
-var { ExtensionError } = ExtensionUtils;
+var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 this.calendar_items = class extends ExtensionAPI {
   getAPI(context) {
@@ -19,13 +21,12 @@ this.calendar_items = class extends ExtensionAPI {
       propsToItem,
       convertItem,
       convertAlarm,
-    } = ChromeUtils.import("resource://experiment-calendar/experiments/calendar/ext-calendar-utils.jsm");
+    } = ChromeUtils.importESModule("resource://tb-experiments-calendar/experiments/calendar/ext-calendar-utils.sys.mjs");
 
     return {
       calendar: {
         items: {
           query: async function(queryProps) {
-            console.log(queryProps);
             let calendars = [];
             if (typeof queryProps.calendarId == "string") {
               calendars = [getResolvedCalendarById(context.extension, queryProps.calendarId)];
@@ -38,9 +39,7 @@ this.calendar_items = class extends ExtensionAPI {
 
             let calendarItems;
             if (queryProps.id) {
-              calendarItems = await Promise.all(calendars.map(calendar => {
-                return calendar.getItem(queryProps.id);
-              }));
+              calendarItems = await Promise.all(calendars.map(calendar => calendar.getItem(queryProps.id)));
             } else {
               calendarItems = await Promise.all(calendars.map(async calendar => {
                 let filter = Ci.calICalendar.ITEM_FILTER_COMPLETED_ALL;
@@ -58,17 +57,16 @@ this.calendar_items = class extends ExtensionAPI {
 
                 let rangeStart = queryProps.rangeStart ? cal.createDateTime(queryProps.rangeStart) : null;
                 let rangeEnd = queryProps.rangeEnd ? cal.createDateTime(queryProps.rangeEnd) : null;
+
                 return calendar.getItemsAsArray(filter, queryProps.limit ?? 0, rangeStart, rangeEnd);
               }));
-              calendarItems = calendarItems.flat();
             }
 
-            return calendarItems.map(item => convertItem(item, queryProps, context.extension));
+            return calendarItems.flat().map(item => convertItem(item, queryProps, context.extension));
           },
           get: async function(calendarId, id, options) {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
             let item = await calendar.getItem(id);
-
             return convertItem(item, options, context.extension);
           },
           create: async function(calendarId, createProperties) {
@@ -139,6 +137,7 @@ this.calendar_items = class extends ExtensionAPI {
           },
           remove: async function(calendarId, id) {
             let calendar = getResolvedCalendarById(context.extension, calendarId);
+
             let item = await calendar.getItem(id);
             if (!item) {
               throw new ExtensionError("Could not find item " + id);
