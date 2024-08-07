@@ -1,0 +1,14 @@
+{
+  "name": "webext-experiments",
+  "version": "1.0.0",
+  "description": "Thunderbird WebExtension Experiments",
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "author": "Thunderbird Contributors",
+  "license": "MPL-2.0",
+  "devDependencies": {
+    "eslint": "^8.57.0",
+    "eslint-plugin-mozilla": "^3.7.5"
+  }
+}
