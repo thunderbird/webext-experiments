@@ -70,8 +70,18 @@ completed the following:
 * The API follows the design principles laid out in this README.
 * The API code must be made available under the terms of the
   [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/).
-* The API code is contained in a sub directory and passes the linters (`npm run lint`).
+* The API code is contained in a sub directory and passes the linters.
 * There is a reference to the API in this README file, along with a short description.
+
+To run the linters, follow these steps
+```bash
+npm install
+npm run lint
+
+# To add arguments to eslint you need to double the -- to separate arguments
+# This command will fix any eslint issues that can be fixed automatically
+npm run lint -- --fix
+```
 
 Each experiment should also contain this table to summarize common information. Not everything needs
 to be filled in from the start, but it will help over the course of the experiment.
