@@ -2,9 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {
-  ExtensionCommon: { ExtensionAPI, EventManager }
-} = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
+var { ExtensionCommon: { ExtensionAPI, EventManager } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
 
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/ExtensionSupport.sys.mjs");
@@ -484,9 +482,7 @@ this.calendar_provider = class extends ExtensionAPI {
             }
 
             loadPromise.then(() => {
-              browser.fixupAndLoadURIString(calendarType.panelSrc, {
-                triggeringPrincipal: this.extension.principal
-              });
+              browser.fixupAndLoadURIString(calendarType.panelSrc, { triggeringPrincipal: this.extension.principal });
             });
 
             win.gButtonHandlers.forNodeId["panel-addon-calendar-settings"].accept = calendarType.onCreated;
@@ -522,7 +518,7 @@ this.calendar_provider = class extends ExtensionAPI {
       .getProtocolHandler("resource")
       .QueryInterface(Ci.nsIResProtocolHandler)
       .setSubstitution("tb-experiments-calendar", null);
-    Services.obs.notifyObservers(null, "startupcache-invalidate", null);
+    Services.obs.notifyObservers(null, "startupcache-invalidate");
   }
 
   onManifestEntry(entryName) {
