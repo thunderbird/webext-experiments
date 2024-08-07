@@ -43,6 +43,11 @@ function convertProps(props, extension) {
   return calendar;
 }
 
+function stackContains(part) {
+  return new Error().stack.includes(part);
+}
+
+
 class ExtCalendarProvider {
   QueryInterface = ChromeUtils.generateQI(["calICalendarProvider"]);
 
@@ -227,7 +232,15 @@ class ExtCalendar extends cal.provider.BaseClass {
   async adoptItem(aItem) {
     const adoptCallback = this._cachedAdoptItemCallback;
     try {
-      const items = await this.extension.emit("calendar.provider.onItemCreated", this, aItem);
+      // TODO There should be an easier way to determine this
+      const options = {};
+      if (stackContains("calItipUtils")) {
+        options.invitation = true;
+      } else if (stackContains("playbackOfflineItems")) {
+        options.offline = true;
+      }
+
+      const items = await this.extension.emit("calendar.provider.onItemCreated", this, aItem, options);
       const { item, metadata } = items.find(props => props.item) || {};
       if (!item) {
         throw new Components.Exception("Did not receive item from extension", Cr.NS_ERROR_FAILURE);
@@ -292,6 +305,13 @@ class ExtCalendar extends cal.provider.BaseClass {
   async modifyItem(aNewItem, aOldItem, aOptions = {}) {
     const modifyCallback = this._cachedModifyItemCallback;
 
+    // TODO There should be an easier way to determine this
+    if (stackContains("calItipUtils")) {
+      aOptions.invitation = true;
+    } else if (stackContains("playbackOfflineItems")) {
+      aOptions.offline = true;
+    }
+
     try {
       const results = await this.extension.emit(
         "calendar.provider.onItemUpdated",
@@ -340,6 +360,13 @@ class ExtCalendar extends cal.provider.BaseClass {
   }
 
   async deleteItem(aItem, aOptions = {}) {
+    // TODO There should be an easier way to determine this
+    if (stackContains("calItipUtils")) {
+      aOptions.invitation = true;
+    } else if (stackContains("playbackOfflineItems")) {
+      aOptions.offline = true;
+    }
+
     try {
       const results = await this.extension.emit(
         "calendar.provider.onItemRemoved",
