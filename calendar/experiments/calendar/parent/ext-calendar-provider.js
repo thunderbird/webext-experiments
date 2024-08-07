@@ -2,10 +2,22 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionCommon: { ExtensionAPI, EventManager } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
+var { ExtensionCommon: { ExtensionAPI, EventManager, EventEmitter } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
+var { ExtensionUtils: { ExtensionError } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionUtils.sys.mjs");
 
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/ExtensionSupport.sys.mjs");
+
+// TODO move me
+function getNewCalendarWindow() {
+  // This window is missing a windowtype attribute
+  for (let win of Services.wm.getEnumerator(null)) {
+    if (win.location == "chrome://calendar/content/calendar-creation.xhtml") {
+      return win;
+    }
+  }
+  return null;
+}
 
 // TODO move me
 class ItemError extends Error {
@@ -553,19 +565,42 @@ this.calendar_provider = class extends ExtensionAPI {
               browser.fixupAndLoadURIString(calendarType.panelSrc, { triggeringPrincipal: this.extension.principal });
             });
 
-            win.gButtonHandlers.forNodeId["panel-addon-calendar-settings"].accept = calendarType.onCreated;
+            win.gButtonHandlers.forNodeId["panel-addon-calendar-settings"].accept = (event) => {
+              let addonPanel = win.document.getElementById("panel-addon-calendar-settings");
+              if (addonPanel.dataset.addonForward) {
+                event.preventDefault();
+                event.target.getButton("accept").disabled = true;
+                win.gAddonAdvance.emit("advance", "forward", addonPanel.dataset.addonForward).finally(() => {
+                  event.target.getButton("accept").disabled = false;
+                });
+              } else if (calendarType.onCreated) {
+                calendarType.onCreated();
+              } else {
+                win.close();
+              }
+            };
+            win.gButtonHandlers.forNodeId["panel-addon-calendar-settings"].extra2 = (_event) => {
+              let addonPanel = win.document.getElementById("panel-addon-calendar-settings");
+
+              if (addonPanel.dataset.addonBackward) {
+                win.gAddonAdvance.emit("advance", "back", addonPanel.dataset.addonBackward);
+              } else {
+                win.selectPanel("panel-select-calendar-type");
+
+                // Reload the window, the add-on might expect to do some initial setup when going
+                // back and forward again.
+                win.setUpAddonCalendarSettingsPanel(extCalendarType);
+              }
+            };
           };
 
-          win.registerCalendarType({
+          let extCalendarType = {
             label: this.extension.localize(provider.name),
             panelSrc: this.extension.getURL(this.extension.localize(provider.creation_panel)),
-            onCreated: () => {
-              // TODO temporary
-              let browser = win.document.getElementById("panel-addon-calendar-settings").lastElementChild;
-              let actor = browser.browsingContext.currentWindowGlobal.getActor("CalendarProvider");
-              actor.sendAsyncMessage("postMessage", { message: "create", origin: this.extension.getURL("") });
-            }
-          });
+          };
+          win.registerCalendarType(extCalendarType);
+
+          win.gAddonAdvance = new EventEmitter();
         }
       }
     });
@@ -773,6 +808,55 @@ this.calendar_provider = class extends ExtensionAPI {
               };
             }
           }).api(),
+
+
+          // New calendar dialog
+          async setAdvanceAction({ forward, back, label }) {
+            let window = getNewCalendarWindow();
+            if (!window) {
+              throw new ExtensionError("New calendar wizard is not open");
+            }
+            let addonPanel = window.document.getElementById("panel-addon-calendar-settings");
+            if (forward) {
+              addonPanel.dataset.addonForward = forward;
+            } else {
+              delete addonPanel.dataset.addonForward;
+            }
+
+            if (back) {
+              addonPanel.dataset.addonBackward = back;
+            } else {
+              delete addonPanel.dataset.addonBackward;
+            }
+
+            addonPanel.setAttribute("buttonlabelaccept", label);
+            if (!addonPanel.hidden) {
+              window.updateButton("accept", addonPanel);
+            }
+          },
+          onAdvanceNewCalendar: new EventManager({
+            context,
+            name: "calendar.provider.onAdvanceNewCalendar",
+            register: fire => {
+              let handler = async (event, direction, actionId) => {
+                let result = await fire.async(actionId);
+
+                if (direction == "forward" && result !== false) {
+                  getNewCalendarWindow()?.close();
+                }
+              };
+
+              let win = getNewCalendarWindow();
+              if (!win) {
+                throw new ExtensionError("New calendar wizard is not open");
+              }
+
+              win.gAddonAdvance.on("advance", handler);
+              return () => {
+                getNewCalendarWindow()?.gAddonAdvance.off("advance", handler);
+              };
+            },
+          }).api()
         },
       },
     };
