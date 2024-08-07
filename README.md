@@ -70,7 +70,7 @@ completed the following:
 * The API follows the design principles laid out in this README.
 * The API code must be made available under the terms of the
   [Mozilla Public License 2.0](https://www.mozilla.org/en-US/MPL/2.0/).
-* The API code is contained in a sub directory and passes the [eslint configuration](.eslintrc.js).
+* The API code is contained in a sub directory and passes the linters (`npm run lint`).
 * There is a reference to the API in this README file, along with a short description.
 
 Each experiment should also contain this table to summarize common information. Not everything needs
