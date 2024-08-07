@@ -109,6 +109,19 @@ official [communication channels](https://developer.thunderbird.net/add-ons/comm
 to tell you more about how they work, and engage in some ad-hoc discussion on how to design WebExtension
 APIs.
 
+Using Experiments in your Add-ons
+---------------------------------
+
+The repository layout is conveniently written so you can collect the experiments in a subdirectory of your add-on.
+
+```
+mkdir -p my_addon_directory/experiments
+cp -R webext-experiments/calendar/experiments/ my_addon_directory/experiments
+```
+
+Now copy the respective `experiment_apis` entries in e.g. `calendar/manifest.json` to your add-on's manifest.json.
+
+
 Migrating from Legacy Add-ons
 -----------------------------
 If you are migrating your legacy add-on to WebExtensions, you may need to rethink how your UI is
