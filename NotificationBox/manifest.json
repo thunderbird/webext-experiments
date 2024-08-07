@@ -1,0 +1,43 @@
+{
+  "manifest_version": 2,
+  "name": "Notificationbar API",
+  "version": "0.1",
+  "description": "Sample usage of the NotificationBox API",
+  "icons": {
+    "48": "icon.png"
+  },
+  "permissions": [
+    "messagesRead",
+    "activeTab",
+    "tabs",
+    "compose",
+    "menus"
+  ],
+  "applications": {
+    "gecko": {
+      "id": "NotificationBox@thunderbird.api.development",
+      "strict_min_version": "128.0"
+    }
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "experiment_apis": {
+    "NotificationBox": {
+      "schema": "NotificationBox/schema.json",
+      "parent": {
+        "scopes": [
+          "addon_parent"
+        ],
+        "paths": [
+          [
+            "NotificationBox"
+          ]
+        ],
+        "script": "NotificationBox/implementation.js"
+      }
+    }
+  }
+}
