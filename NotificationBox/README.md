@@ -20,14 +20,8 @@ Add the NotificationBox Experiment to your add-on. Your `manifest.json` needs an
     "NotificationBox": {
       "schema": "NotificationBox/schema.json",
       "parent": {
-        "scopes": [
-          "addon_parent"
-        ],
-        "paths": [
-          [
-            "NotificationBox"
-          ]
-        ],
+        "scopes": ["addon_parent"],
+        "paths": [["NotificationBox"]],
         "script": "NotificationBox/implementation.js"
       }
     }
