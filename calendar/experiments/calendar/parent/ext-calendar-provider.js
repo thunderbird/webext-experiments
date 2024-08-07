@@ -423,21 +423,24 @@ class ExtFreeBusyProvider {
   async getFreeBusyIntervals(aCalId, aRangeStart, aRangeEnd, aBusyTypes, aListener) {
     try {
       const TYPE_MAP = {
+        unknown: Ci.calIFreeBusyInterval.UNKNOWN,
         free: Ci.calIFreeBusyInterval.FREE,
         busy: Ci.calIFreeBusyInterval.BUSY,
         unavailable: Ci.calIFreeBusyInterval.BUSY_UNAVAILABLE,
         tentative: Ci.calIFreeBusyInterval.BUSY_TENTATIVE,
       };
       const attendee = aCalId.replace(/^mailto:/, "");
-      const start = aRangeStart.icalString;
-      const end = aRangeEnd.icalString;
+      const start = cal.dtz.toRFC3339(aRangeStart);
+      const end = cal.dtz.toRFC3339(aRangeEnd);
       const types = ["free", "busy", "unavailable", "tentative"].filter((type, index) => aBusyTypes & (1 << index));
-      const results = await this.fire.async({ attendee, start, end, types });
+      const results = await this.fire.async(attendee, start, end, types);
       aListener.onResult({ status: Cr.NS_OK }, results.map(interval =>
         new cal.provider.FreeBusyInterval(aCalId,
           TYPE_MAP[interval.type],
-          cal.createDateTime(interval.start),
-          cal.createDateTime(interval.end))));
+          cal.dtz.fromRFC3339(interval.start, cal.dtz.UTC),
+          cal.dtz.fromRFC3339(interval.end, cal.dtz.UTC)
+        )
+      ));
     } catch (e) {
       console.error(e);
       aListener.onResult({ status: e.result || Cr.NS_ERROR_FAILURE }, e.message || e);
@@ -474,12 +477,12 @@ this.calendar_provider = class extends ExtensionAPI {
           win.gIdentityNotification.removeAllNotifications();
         }
 
-        let minRefresh = calendar.capabilities?.minimumRefresh;
+        const minRefresh = calendar.capabilities?.minimumRefresh;
 
         if (minRefresh) {
-          let refInterval = win.document.getElementById("calendar-refreshInterval-menupopup");
-          for (let node of [...refInterval.children]) {
-            let nodeval = parseInt(node.getAttribute("value"), 10);
+          const refInterval = win.document.getElementById("calendar-refreshInterval-menupopup");
+          for (const node of [...refInterval.children]) {
+            const nodeval = parseInt(node.getAttribute("value"), 10);
             if (nodeval < minRefresh && nodeval != 0) {
               node.remove();
             }
