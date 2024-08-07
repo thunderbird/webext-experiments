@@ -120,7 +120,7 @@
         let iconElement = iconContainer.querySelector("img");
         iconElement.remove();
 
-        const win = this.parent.extension.nndowManager.get(
+        const win = this.parent.extension.windowManager.get(
           this.properties.windowId,
           this.parent.context
         ).window;
