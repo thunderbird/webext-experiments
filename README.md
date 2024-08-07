@@ -1,36 +1,36 @@
 Thunderbird WebExtension Experiments
 ====================================
-Thunderbird is starting to provide an API similar to Firefox's WebExtensions. There is overlapping
-API for commonly used elements like windows and tabs, but there will also be mail-specific APIs to
-provide access to E-Mails and Thunderbird-specific features like the Calendar.
+Thunderbird is providing APIs similar to Firefox's WebExtensions. There is overlapping API for commonly
+used elements like windows and tabs, but there also have to be Thunderbird-specific APIs, for example
+to provide access to E-Mails or Calendar. These APIs are sometimes referred to as *MailExtension APIs*.
+There is an ongoing effort to integrate more such APIs into Thunderbird.
 
-This repository serves as a starting point for experimenting with new APIs before we push them to
-nightly builds, and should also serve as examples for add-on developers wanting to create their own
-APIs.
+Experiment APIs are WebExtension APIs whose implementation is part of the add-on, enabling features
+which are not yet provided by Thunderbird's own APIs. This repository provides Experiments which
+could be useful to add-on developers. These Experiments also serve as examples for add-on developers
+wanting to create their own APIs.
+
+Furthermore, this repository tracks progress of Experiments, which aim to be added to Thunderbird.
 
 API Experiments
 ---------------
-The following WebExtension Experiments are available in this repository for Thunderbird. Note that
-WebExtensions experiments are supported starting Thunderbird 63. It is recommended to use a nightly
-build when testing and developing WebExtension Experiments.
+The following WebExtension Experiments are available in this repository.
 
-| Name                               | Author                                           | Description
-| ---------------------------------- | ------------------------------------------------ | --------------
-| [calendar](./calendar/)            | [@kewisch](https://github.com/kewisch/)          | Draft for calendar-related APIs in Thunderbird
+| Name                                  | Author                                      | Description
+| ------------------------------------- | ------------------------------------------- | --------------
+| [calendar](./calendar/)               | [@kewisch](https://github.com/kewisch/)     | Draft for calendar-related APIs in Thunderbird
+| [NotificationBox](./NotificationBox/) | [@jobisoft](https://github.com/jobisoft/)   | Draft for an API to show notifications inside Thunderbird
 
 
 Contributions Welcome!
 ----------------------
-We would like to encourage add-on developers to contribute their APIs, so they can become part of
-core Thunderbird. Unlike Firefox, the team behind Thunderbird is mostly volunteer driven. Therefore,
-we need your support to provide add-on developers with APIs that provide access to Thunderbird's
-features.
+We would like to encourage add-on developers to contribute their APIs, so they can be discussed to
+become part of core Thunderbird.
 
-When creating a new API, please start with [the Firefox documentation on WebExtension
-Experiments](https://webextensions-experiments.readthedocs.io/en/latest/). Support for WebExtensions
-is provided by the Mozilla Platform, therefore the basics are exactly the same. You can also read
-some of the code specific to [Thunderbird
-WebExtensions](https://searchfox.org/comm-central/source/mail/components/extensions/), which will
+When creating a new API, please start with [the documentation on WebExtension
+Experiments](https://developer.thunderbird.net/add-ons/mailextensions/experiments). You can also read
+the code of already implemented [Thunderbird
+WebExtension APIs](https://searchfox.org/comm-central/source/mail/components/extensions/), which will
 provide further examples.
 
 If you have an idea for an API that you think would be worthwhile, please file an issue on this
@@ -84,9 +84,9 @@ to be filled in from the start, but it will help over the course of the experime
 | Tracking      | [issue #1](https://github.com/thundernest/tb-web-ext-experiments/issues/1) / [bug 1396172](https://bugzilla.mozilla.org/show_bug.cgi?id=1396172)
 
 Valid status values are:
-* `Draft`: Initial commit, discussing design in linked github issue
-* `Accepted`: API Experiment accepted for Thunderbird Core, bug is filed to integrate into comm-central
-* `Nightly`: API Experiment landed in nightly builds, compatibility field should be "Since Thunderbird NN"
+* `Draft`: Initial commit, discussing design in linked github issue. Depending on the nature of the Experiment, it may not get past this state.
+* `Accepted`: API Experiment accepted for Thunderbird Core, bug is filed to integrate into comm-central.
+* `Nightly`: API Experiment landed in nightly builds, compatibility field should be "Since Thunderbird NN".
 * `Release`: API Experiment is available in release builds, compatibility field should be "Since Thunderbird NN".
 
 The compatibility field shows what versions the API Experiment was designed for. If you are working
@@ -94,9 +94,10 @@ on it in nightly, please be sure to set/update the respective nightly version. I
 also works for a range of nightlies, you can also add a range.
 
 ### Getting in touch
-If you have questions about WebExtension Experiments in Thunderbird, please stop by our IRC channel
-#maildev on irc.mozilla.org. We are happy to tell you more about how they work, and engage in some
-ad-hoc discussion on how to design WebExtension APIs.
+If you have questions about WebExtension Experiments in Thunderbird, you can reach us through our
+official [communication channels](https://developer.thunderbird.net/add-ons/community). We are happy
+to tell you more about how they work, and engage in some ad-hoc discussion on how to design WebExtension
+APIs.
 
 Migrating from Legacy Add-ons
 -----------------------------
@@ -107,6 +108,5 @@ exposing all of the features the Mozilla Platform has to offer and making the AP
 maintain.
 
 We are not doing this to limit creativity, but to ensure Thunderbird can thrive and add-ons are
-resilient to changes in Thunderbird and the Mozilla Platform. If you had a lot of trouble making
-your add-on compatible to Thunderbird 60, imagine it would just stay compatible despite far-reaching
-internal changes.
+resilient to changes in Thunderbird and the Mozilla Platform. The goal is to keep WebExtension compatible
+with future versions of Thunderbird despite far-reaching internal changes.
