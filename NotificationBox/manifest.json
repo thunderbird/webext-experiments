@@ -26,11 +26,11 @@
   },
   "experiment_apis": {
     "NotificationBox": {
-      "schema": "NotificationBox/schema.json",
+      "schema": "experiments/NotificationBox/schema/notification-box.json",
       "parent": {
         "scopes": ["addon_parent"],
         "paths": [["NotificationBox"]],
-        "script": "NotificationBox/implementation.js"
+        "script": "experiments/NotificationBox/parent/ext-notification-box.js"
       }
     }
   }
