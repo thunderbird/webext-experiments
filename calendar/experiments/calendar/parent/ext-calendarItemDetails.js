@@ -2,9 +2,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var {
-  ExtensionCommon: { ExtensionAPI, makeWidgetId }
-} = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
+var { ExtensionCommon: { ExtensionAPI, makeWidgetId } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
 
 var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/ExtensionSupport.sys.mjs");
 
@@ -16,7 +14,7 @@ this.calendarItemDetails = class extends ExtensionAPI {
     if (this.extension.manifest.calendar_item_details) {
       let panelFrame;
       if (window.tabmail) {
-        panelFrame = window.document.getElementById(iframeId|| tabmail.currentTabInfo.iframe?.id);
+        panelFrame = window.document.getElementById(iframeId || window.tabmail.currentTabInfo.iframe?.id);
       } else {
         panelFrame = window.document.getElementById("calendar-item-panel-iframe");
       }
@@ -45,9 +43,7 @@ this.calendarItemDetails = class extends ExtensionAPI {
         let loadPromise = setupE10sBrowser(this.extension, browser, tabpanel);
 
         return loadPromise.then(() => {
-          browser.fixupAndLoadURIString(this.extension.manifest.calendar_item_details.default_content, {
-            triggeringPrincipal: this.extension.principal
-          });
+          browser.fixupAndLoadURIString(this.extension.manifest.calendar_item_details.default_content, { triggeringPrincipal: this.extension.principal });
         });
       });
     }

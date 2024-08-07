@@ -99,7 +99,7 @@
           const parts = cssPropertyName.split("-");
           return (
             // check if first part is in whitelist
-            parts.length > 0 &&
+            !!parts.length &&
             allowedCssPropNames.includes(parts[0]) &&
             // validate second part (if any) being a simple word
             (parts.length == 1 ||
