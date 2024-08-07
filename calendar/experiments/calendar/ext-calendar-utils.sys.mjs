@@ -250,7 +250,6 @@ export async function setupE10sBrowser(extension, browser, parent, initOptions={
   }
   sheets.push("chrome://browser/content/extension-popup-panel.css");
 
-
   const initBrowser = () => {
     ExtensionParent.apiManager.emit("extension-browser-inserted", browser);
     const mm = browser.messageManager;

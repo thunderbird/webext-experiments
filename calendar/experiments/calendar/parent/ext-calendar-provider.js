@@ -468,7 +468,6 @@ this.calendar_provider = class extends ExtensionAPI {
       chromeURLs: ["chrome://calendar/content/calendar-properties-dialog.xhtml"],
       onLoadWindow: (win) => {
         const calendar = unwrapCalendar(win.arguments[0].calendar);
-        console.log(calendar.type);
         if (calendar.type != "ext-" + this.extension.id) {
           return;
         }
@@ -490,7 +489,7 @@ this.calendar_provider = class extends ExtensionAPI {
           }
         }
 
-        let mutable = calendar.capabilities?.mutable;
+        const mutable = calendar.capabilities?.mutable;
 
         if (!mutable) {
           win.document.getElementById("read-only").disabled = true;
