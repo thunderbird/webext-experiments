@@ -70,10 +70,9 @@ this.calendar_calendars = class extends ExtensionAPI {
               let calendar = unwrapCalendar(cal.manager.getCalendarById(id.substring(0, id.length - 6)));
               let own = calendar.offlineStorage && isOwnCalendar(calendar, context.extension);
               return own ? convertCalendar(context.extension, calendar.offlineStorage) : null;
-            } else {
-              let calendar = cal.manager.getCalendarById(id);
-              return convertCalendar(context.extension, calendar);
             }
+            let calendar = cal.manager.getCalendarById(id);
+            return convertCalendar(context.extension, calendar);
           },
           async create(createProperties) {
             let calendar = cal.manager.createCalendar(
@@ -211,8 +210,8 @@ this.calendar_calendars = class extends ExtensionAPI {
                 onCalendarRegistered(calendar) {
                   fire.sync(convertCalendar(context.extension, calendar));
                 },
-                onCalendarUnregistering(calendar) {},
-                onCalendarDeleting(calendar) {},
+                onCalendarUnregistering() {},
+                onCalendarDeleting() {},
               };
 
               cal.manager.addObserver(observer);
@@ -227,7 +226,7 @@ this.calendar_calendars = class extends ExtensionAPI {
             name: "calendar.calendars.onUpdated",
             register: fire => {
               let observer = cal.createAdapter(Ci.calIObserver, {
-                onPropertyChanged(calendar, name, value, oldValue) {
+                onPropertyChanged(calendar, name, value, _oldValue) {
                   let converted = convertCalendar(context.extension, calendar);
                   switch (name) {
                     case "name":
@@ -258,11 +257,11 @@ this.calendar_calendars = class extends ExtensionAPI {
             register: fire => {
               let observer = {
                 QueryInterface: ChromeUtils.generateQI(["calICalendarManagerObserver"]),
-                onCalendarRegistered(calendar) {},
+                onCalendarRegistered() {},
                 onCalendarUnregistering(calendar) {
                   fire.sync(calendar.id);
                 },
-                onCalendarDeleting(calendar) {},
+                onCalendarDeleting() {},
               };
 
               cal.manager.addObserver(observer);

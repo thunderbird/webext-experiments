@@ -2,22 +2,33 @@
 
 module.exports = {
   "env": {
-    "es2022": true,
-    "webextensions": true
+    es2022: true,
+    webextensions: true
+  },
+  "globals": {
+    messenger: true
   },
   "root": true,
   "plugins": ["mozilla"],
-  "extends": ["plugin:mozilla/recommended"], 
+  "extends": ["plugin:mozilla/recommended"],
 
-  rules: {
+  "rules": {
     // experiment files are not ES modules, so we can't use static import
     "mozilla/use-static-import": "off",
 
     // We are still experimenting, console messages are ok for now
-    "no-console": "off"
+    "no-console": "off",
+
+    // Some other rules that don't seem to be in the recommended set
+    "no-trailing-spaces": "error",
+    "eol-last": "error",
+    "quote-props": ["error", "consistent-as-needed", { keywords: true }],
+    "quotes": ["error", "double", { avoidEscape: true }],
+    "padded-blocks": ["error", "never"],
+    "indent": [2, 2, { SwitchCase: 1 }],
   },
 
-   overrides: [
+  "overrides": [
     {
       files: [".eslintrc.js"],
       env: {
@@ -26,10 +37,13 @@ module.exports = {
       },
     },
     {
-      files: ["*/experiments/*/parent/*.js"],
+      files: ["*/experiments/*/parent/*.js", "*/experiments/*/child/*.js"],
       globals: {
         global: true,
         Services: true,
+      },
+      rules: {
+        "no-unused-vars": ["error", { argsIgnorePattern: "^_|context" }]
       }
     }
   ]
