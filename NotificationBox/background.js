@@ -6,9 +6,8 @@ messenger.NotificationBox.onButtonClicked.addListener((windowId, notificationId,
   if (["btn-keep"].includes(buttonId)) {
     console.log("Box will not close, as long as one listener returns {close:false}.");
     return { close: false };
-  } 
-    return { close: true };
-  
+  }
+  return { close: true };
 });
 
 // Defining another onButtonClicked listener
