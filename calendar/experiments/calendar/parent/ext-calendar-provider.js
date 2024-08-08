@@ -2,10 +2,22 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionCommon: { ExtensionAPI, EventManager } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
+var { ExtensionCommon: { ExtensionAPI, EventManager, EventEmitter } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
+var { ExtensionUtils: { ExtensionError } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionUtils.sys.mjs");
 
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/ExtensionSupport.sys.mjs");
+
+// TODO move me
+function getNewCalendarWindow() {
+  // This window is missing a windowtype attribute
+  for (let win of Services.wm.getEnumerator(null)) {
+    if (win.location == "chrome://calendar/content/calendar-creation.xhtml") {
+      return win;
+    }
+  }
+  return null;
+}
 
 // TODO move me
 class ItemError extends Error {
@@ -36,11 +48,17 @@ function convertProps(props, extension) {
   calendar.setProperty("readOnly", props.readOnly);
   calendar.setProperty("disabled", props.enabled === false);
   calendar.setProperty("color", props.color || "#A8C2E1");
+  calendar.capabilities = props.capabilities; // TODO validation necessary?
 
   calendar.uri = Services.io.newURI(props.url);
 
   return calendar;
 }
+
+function stackContains(part) {
+  return new Error().stack.includes(part);
+}
+
 
 class ExtCalendarProvider {
   QueryInterface = ChromeUtils.generateQI(["calICalendarProvider"]);
@@ -226,7 +244,15 @@ class ExtCalendar extends cal.provider.BaseClass {
   async adoptItem(aItem) {
     const adoptCallback = this._cachedAdoptItemCallback;
     try {
-      let items = await this.extension.emit("calendar.provider.onItemCreated", this, aItem);
+      // TODO There should be an easier way to determine this
+      let options = {};
+      if (stackContains("calItipUtils")) {
+        options.invitation = true;
+      } else if (stackContains("playbackOfflineItems")) {
+        options.offline = true;
+      }
+
+      let items = await this.extension.emit("calendar.provider.onItemCreated", this, aItem, options);
       let { item, metadata } = items.find(props => props.item) || {};
       if (!item) {
         throw new Components.Exception("Did not receive item from extension", Cr.NS_ERROR_FAILURE);
@@ -253,7 +279,9 @@ class ExtCalendar extends cal.provider.BaseClass {
       return item;
     } catch (e) {
       let code;
-      if (e instanceof ItemError) {
+      if (e.message.startsWith("NetworkError")) {
+        code = Cr.NS_ERROR_NET_INTERRUPT;
+      } else if (e instanceof ItemError) {
         code = e.xpcomReason;
       } else {
         code = e.result || Cr.NS_ERROR_FAILURE;
@@ -291,6 +319,13 @@ class ExtCalendar extends cal.provider.BaseClass {
   async modifyItem(aNewItem, aOldItem, aOptions = {}) {
     const modifyCallback = this._cachedModifyItemCallback;
 
+    // TODO There should be an easier way to determine this
+    if (stackContains("calItipUtils")) {
+      aOptions.invitation = true;
+    } else if (stackContains("playbackOfflineItems")) {
+      aOptions.offline = true;
+    }
+
     try {
       let results = await this.extension.emit(
         "calendar.provider.onItemUpdated",
@@ -320,7 +355,9 @@ class ExtCalendar extends cal.provider.BaseClass {
       return item;
     } catch (e) {
       let code;
-      if (e instanceof ItemError) {
+      if (e.message.startsWith("NetworkError")) {
+        code = Cr.NS_ERROR_NET_INTERRUPT;
+      } else if (e instanceof ItemError) {
         if (e.reason == ItemError.CONFLICT) {
           let overwrite = cal.provider.promptOverwrite("modify", aOldItem);
           if (overwrite) {
@@ -339,6 +376,13 @@ class ExtCalendar extends cal.provider.BaseClass {
   }
 
   async deleteItem(aItem, aOptions = {}) {
+    // TODO There should be an easier way to determine this
+    if (stackContains("calItipUtils")) {
+      aOptions.invitation = true;
+    } else if (stackContains("playbackOfflineItems")) {
+      aOptions.offline = true;
+    }
+
     try {
       let results = await this.extension.emit(
         "calendar.provider.onItemRemoved",
@@ -360,7 +404,9 @@ class ExtCalendar extends cal.provider.BaseClass {
       this.observers.notify("onDeleteItem", [aItem]);
     } catch (e) {
       let code;
-      if (e instanceof ItemError) {
+      if (e.message.startsWith("NetworkError")) {
+        code = Cr.NS_ERROR_NET_INTERRUPT;
+      } else if (e instanceof ItemError) {
         if (e.reason == ItemError.CONFLICT) {
           let overwrite = cal.provider.promptOverwrite("delete", aItem);
           if (overwrite) {
@@ -423,21 +469,24 @@ class ExtFreeBusyProvider {
   async getFreeBusyIntervals(aCalId, aRangeStart, aRangeEnd, aBusyTypes, aListener) {
     try {
       const TYPE_MAP = {
+        unknown: Ci.calIFreeBusyInterval.UNKNOWN,
         free: Ci.calIFreeBusyInterval.FREE,
         busy: Ci.calIFreeBusyInterval.BUSY,
         unavailable: Ci.calIFreeBusyInterval.BUSY_UNAVAILABLE,
         tentative: Ci.calIFreeBusyInterval.BUSY_TENTATIVE,
       };
       let attendee = aCalId.replace(/^mailto:/, "");
-      let start = aRangeStart.icalString;
-      let end = aRangeEnd.icalString;
+      let start = cal.dtz.toRFC3339(aRangeStart);
+      let end = cal.dtz.toRFC3339(aRangeEnd);
       let types = ["free", "busy", "unavailable", "tentative"].filter((type, index) => aBusyTypes & (1 << index));
-      let results = await this.fire.async({ attendee, start, end, types });
+      let results = await this.fire.async(attendee, start, end, types);
       aListener.onResult({ status: Cr.NS_OK }, results.map(interval =>
         new cal.provider.FreeBusyInterval(aCalId,
           TYPE_MAP[interval.type],
-          cal.createDateTime(interval.start),
-          cal.createDateTime(interval.end))));
+          cal.dtz.fromRFC3339(interval.start, cal.dtz.UTC),
+          cal.dtz.fromRFC3339(interval.end, cal.dtz.UTC)
+        )
+      ));
     } catch (e) {
       console.error(e);
       aListener.onResult({ status: e.result || Cr.NS_ERROR_FAILURE }, e.message || e);
@@ -456,11 +505,44 @@ this.calendar_provider = class extends ExtensionAPI {
       .QueryInterface(Ci.nsIResProtocolHandler)
       .setSubstitution("tb-experiments-calendar", this.extension.rootURI);
 
-    const { setupE10sBrowser } = ChromeUtils.importESModule("resource://tb-experiments-calendar/experiments/calendar/ext-calendar-utils.sys.mjs");
+    const { setupE10sBrowser, unwrapCalendar } = ChromeUtils.importESModule("resource://tb-experiments-calendar/experiments/calendar/ext-calendar-utils.sys.mjs");
 
     ChromeUtils.registerWindowActor("CalendarProvider", { child: { esModuleURI: "resource://tb-experiments-calendar/experiments/calendar/child/ext-calendar-provider-actor.sys.mjs" } });
 
-    ExtensionSupport.registerWindowListener("ext-calendar-provider-" + this.extension.id, {
+    ExtensionSupport.registerWindowListener("ext-calendar-provider-properties-" + this.extension.id, {
+      chromeURLs: ["chrome://calendar/content/calendar-properties-dialog.xhtml"],
+      onLoadWindow: (win) => {
+        const calendar = unwrapCalendar(win.arguments[0].calendar);
+        if (calendar.type != "ext-" + this.extension.id) {
+          return;
+        }
+
+        // Work around a bug where the notification is shown when imip is disabled
+        if (calendar.getProperty("imip.identity.disabled")) {
+          win.gIdentityNotification.removeAllNotifications();
+        }
+
+        let minRefresh = calendar.capabilities?.minimumRefresh;
+
+        if (minRefresh) {
+          let refInterval = win.document.getElementById("calendar-refreshInterval-menupopup");
+          for (let node of [...refInterval.children]) {
+            let nodeval = parseInt(node.getAttribute("value"), 10);
+            if (nodeval < minRefresh && nodeval != 0) {
+              node.remove();
+            }
+          }
+        }
+
+        let mutable = calendar.capabilities?.mutable;
+
+        if (!mutable) {
+          win.document.getElementById("read-only").disabled = true;
+        }
+      }
+    });
+
+    ExtensionSupport.registerWindowListener("ext-calendar-provider-creation-" + this.extension.id, {
       chromeURLs: ["chrome://calendar/content/calendar-creation.xhtml"],
       onLoadWindow: (win) => {
         let provider = this.extension.manifest.calendar_provider;
@@ -483,19 +565,42 @@ this.calendar_provider = class extends ExtensionAPI {
               browser.fixupAndLoadURIString(calendarType.panelSrc, { triggeringPrincipal: this.extension.principal });
             });
 
-            win.gButtonHandlers.forNodeId["panel-addon-calendar-settings"].accept = calendarType.onCreated;
+            win.gButtonHandlers.forNodeId["panel-addon-calendar-settings"].accept = (event) => {
+              let addonPanel = win.document.getElementById("panel-addon-calendar-settings");
+              if (addonPanel.dataset.addonForward) {
+                event.preventDefault();
+                event.target.getButton("accept").disabled = true;
+                win.gAddonAdvance.emit("advance", "forward", addonPanel.dataset.addonForward).finally(() => {
+                  event.target.getButton("accept").disabled = false;
+                });
+              } else if (calendarType.onCreated) {
+                calendarType.onCreated();
+              } else {
+                win.close();
+              }
+            };
+            win.gButtonHandlers.forNodeId["panel-addon-calendar-settings"].extra2 = (_event) => {
+              let addonPanel = win.document.getElementById("panel-addon-calendar-settings");
+
+              if (addonPanel.dataset.addonBackward) {
+                win.gAddonAdvance.emit("advance", "back", addonPanel.dataset.addonBackward);
+              } else {
+                win.selectPanel("panel-select-calendar-type");
+
+                // Reload the window, the add-on might expect to do some initial setup when going
+                // back and forward again.
+                win.setUpAddonCalendarSettingsPanel(extCalendarType);
+              }
+            };
           };
 
-          win.registerCalendarType({
+          let extCalendarType = {
             label: this.extension.localize(provider.name),
             panelSrc: this.extension.getURL(this.extension.localize(provider.creation_panel)),
-            onCreated: () => {
-              // TODO temporary
-              let browser = win.document.getElementById("panel-addon-calendar-settings").lastElementChild;
-              let actor = browser.browsingContext.currentWindowGlobal.getActor("CalendarProvider");
-              actor.sendAsyncMessage("postMessage", { message: "create", origin: this.extension.getURL("") });
-            }
-          });
+          };
+          win.registerCalendarType(extCalendarType);
+
+          win.gAddonAdvance = new EventEmitter();
         }
       }
     });
@@ -504,7 +609,8 @@ this.calendar_provider = class extends ExtensionAPI {
     if (isAppShutdown) {
       return;
     }
-    ExtensionSupport.unregisterWindowListener("ext-calendar-provider-" + this.extension.id);
+    ExtensionSupport.unregisterWindowListener("ext-calendar-provider-creation-" + this.extension.id);
+    ExtensionSupport.unregisterWindowListener("ext-calendar-provider-properties-" + this.extension.id);
     ChromeUtils.unregisterWindowActor("CalendarProvider");
 
     if (this.extension.manifest.calendar_provider) {
@@ -702,6 +808,55 @@ this.calendar_provider = class extends ExtensionAPI {
               };
             }
           }).api(),
+
+
+          // New calendar dialog
+          async setAdvanceAction({ forward, back, label }) {
+            let window = getNewCalendarWindow();
+            if (!window) {
+              throw new ExtensionError("New calendar wizard is not open");
+            }
+            let addonPanel = window.document.getElementById("panel-addon-calendar-settings");
+            if (forward) {
+              addonPanel.dataset.addonForward = forward;
+            } else {
+              delete addonPanel.dataset.addonForward;
+            }
+
+            if (back) {
+              addonPanel.dataset.addonBackward = back;
+            } else {
+              delete addonPanel.dataset.addonBackward;
+            }
+
+            addonPanel.setAttribute("buttonlabelaccept", label);
+            if (!addonPanel.hidden) {
+              window.updateButton("accept", addonPanel);
+            }
+          },
+          onAdvanceNewCalendar: new EventManager({
+            context,
+            name: "calendar.provider.onAdvanceNewCalendar",
+            register: fire => {
+              let handler = async (event, direction, actionId) => {
+                let result = await fire.async(actionId);
+
+                if (direction == "forward" && result !== false) {
+                  getNewCalendarWindow()?.close();
+                }
+              };
+
+              let win = getNewCalendarWindow();
+              if (!win) {
+                throw new ExtensionError("New calendar wizard is not open");
+              }
+
+              win.gAddonAdvance.on("advance", handler);
+              return () => {
+                getNewCalendarWindow()?.gAddonAdvance.off("advance", handler);
+              };
+            },
+          }).api()
         },
       },
     };

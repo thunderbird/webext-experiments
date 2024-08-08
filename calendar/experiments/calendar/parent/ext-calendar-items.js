@@ -91,11 +91,14 @@ this.calendar_items = class extends ExtensionAPI {
             if (!oldItem) {
               throw new ExtensionError("Could not find item " + id);
             }
-            if (oldItem instanceof Ci.calIEvent) {
+            if (oldItem.isEvent()) {
               updateProperties.type = "event";
-            } else if (oldItem instanceof Ci.calITodo) {
+            } else if (oldItem.isTodo()) {
               updateProperties.type = "task";
+            } else {
+              throw new ExtensionError(`Encountered unknown item type for ${calendarId}/${id}`);
             }
+
             let newItem = propsToItem(updateProperties, oldItem?.clone());
             newItem.calendar = calendar.superCalendar;
 
@@ -139,6 +142,17 @@ this.calendar_items = class extends ExtensionAPI {
               throw new ExtensionError("Could not find item " + id);
             }
             await calendar.deleteItem(item);
+          },
+
+          async getCurrent(options) {
+            try {
+              // TODO This seems risky, could be null depending on remoteness
+              let item = context.browsingContext.embedderElement.ownerGlobal.calendarItem;
+              return convertItem(item, options, context.extension);
+            } catch (e) {
+              console.error(e);
+              return null;
+            }
           },
 
           onCreated: new EventManager({
