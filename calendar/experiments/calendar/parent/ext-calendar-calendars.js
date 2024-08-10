@@ -20,7 +20,7 @@ this.calendar_calendars = class extends ExtensionAPI {
       calendar: {
         calendars: {
           async query({ type, url, name, color, readOnly, enabled }) {
-            let calendars = cal.manager.getCalendars();
+            const calendars = cal.manager.getCalendars();
 
             let pattern = null;
             if (url) {
@@ -67,11 +67,11 @@ this.calendar_calendars = class extends ExtensionAPI {
           async get(id) {
             // TODO find a better way to determine cache id
             if (id.endsWith("#cache")) {
-              let calendar = unwrapCalendar(cal.manager.getCalendarById(id.substring(0, id.length - 6)));
-              let own = calendar.offlineStorage && isOwnCalendar(calendar, context.extension);
+              const calendar = unwrapCalendar(cal.manager.getCalendarById(id.substring(0, id.length - 6)));
+              const own = calendar.offlineStorage && isOwnCalendar(calendar, context.extension);
               return own ? convertCalendar(context.extension, calendar.offlineStorage) : null;
             }
-            let calendar = cal.manager.getCalendarById(id);
+            const calendar = cal.manager.getCalendarById(id);
             return convertCalendar(context.extension, calendar);
           },
           async create(createProperties) {
@@ -94,7 +94,7 @@ this.calendar_calendars = class extends ExtensionAPI {
             return convertCalendar(context.extension, calendar);
           },
           async update(id, updateProperties) {
-            let calendar = cal.manager.getCalendarById(id);
+            const calendar = cal.manager.getCalendarById(id);
             if (!calendar) {
               throw new ExtensionError(`Invalid calendar id: ${id}`);
             }
@@ -114,7 +114,7 @@ this.calendar_calendars = class extends ExtensionAPI {
               calendar.setProperty("disabled", !updateProperties.enabled);
             }
 
-            for (let prop of ["readOnly", "name", "color"]) {
+            for (const prop of ["readOnly", "name", "color"]) {
               if (updateProperties[prop] != null) {
                 calendar.setProperty(prop, updateProperties[prop]);
               }
@@ -122,7 +122,7 @@ this.calendar_calendars = class extends ExtensionAPI {
 
             if (updateProperties.capabilities) {
               // TODO validate capability names
-              let unwrappedCalendar = calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject;
+              const unwrappedCalendar = calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject;
               unwrappedCalendar.capabilities = Object.assign({}, unwrappedCalendar.capabilities, updateProperties.capabilities);
             }
 
@@ -137,7 +137,7 @@ this.calendar_calendars = class extends ExtensionAPI {
             }
           },
           async remove(id) {
-            let calendar = cal.manager.getCalendarById(id);
+            const calendar = cal.manager.getCalendarById(id);
             if (!calendar) {
               throw new ExtensionError(`Invalid calendar id: ${id}`);
             }
@@ -149,15 +149,15 @@ this.calendar_calendars = class extends ExtensionAPI {
               throw new ExtensionError("Cannot clear non-cached calendar");
             }
 
-            let offlineStorage = getResolvedCalendarById(context.extension, id);
-            let calendar = cal.manager.getCalendarById(id.substring(0, id.length - 6));
+            const offlineStorage = getResolvedCalendarById(context.extension, id);
+            const calendar = cal.manager.getCalendarById(id.substring(0, id.length - 6));
 
             if (!isOwnCalendar(calendar, context.extension)) {
               throw new ExtensionError("Cannot clear foreign calendar");
             }
 
             await new Promise((resolve, reject) => {
-              let listener = {
+              const listener = {
                 onDeleteCalendar(aCalendar, aStatus, aDetail) {
                   if (Components.isSuccessCode(aStatus)) {
                     resolve();
@@ -175,26 +175,26 @@ this.calendar_calendars = class extends ExtensionAPI {
           },
 
           synchronize(ids) {
-            let calendars = [];
+            const calendars = [];
             if (ids) {
               if (!Array.isArray(ids)) {
                 ids = [ids];
               }
-              for (let id of ids) {
-                let calendar = cal.manager.getCalendarById(id);
+              for (const id of ids) {
+                const calendar = cal.manager.getCalendarById(id);
                 if (!calendar) {
                   throw new ExtensionError(`Invalid calendar id: ${id}`);
                 }
                 calendars.push(calendar);
               }
             } else {
-              for (let calendar of cal.manager.getCalendars()) {
+              for (const calendar of cal.manager.getCalendars()) {
                 if (calendar.getProperty("calendar-main-in-composite")) {
                   calendars.push(calendar);
                 }
               }
             }
-            for (let calendar of calendars) {
+            for (const calendar of calendars) {
               if (!calendar.getProperty("disabled") && calendar.canRefresh) {
                 calendar.refresh();
               }
@@ -205,7 +205,7 @@ this.calendar_calendars = class extends ExtensionAPI {
             context,
             name: "calendar.calendars.onCreated",
             register: fire => {
-              let observer = {
+              const observer = {
                 QueryInterface: ChromeUtils.generateQI(["calICalendarManagerObserver"]),
                 onCalendarRegistered(calendar) {
                   fire.sync(convertCalendar(context.extension, calendar));
@@ -225,9 +225,9 @@ this.calendar_calendars = class extends ExtensionAPI {
             context,
             name: "calendar.calendars.onUpdated",
             register: fire => {
-              let observer = cal.createAdapter(Ci.calIObserver, {
+              const observer = cal.createAdapter(Ci.calIObserver, {
                 onPropertyChanged(calendar, name, value, _oldValue) {
-                  let converted = convertCalendar(context.extension, calendar);
+                  const converted = convertCalendar(context.extension, calendar);
                   switch (name) {
                     case "name":
                     case "color":
@@ -255,7 +255,7 @@ this.calendar_calendars = class extends ExtensionAPI {
             context,
             name: "calendar.calendars.onRemoved",
             register: fire => {
-              let observer = {
+              const observer = {
                 QueryInterface: ChromeUtils.generateQI(["calICalendarManagerObserver"]),
                 onCalendarRegistered() {},
                 onCalendarUnregistering(calendar) {

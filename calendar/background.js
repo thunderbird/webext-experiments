@@ -47,7 +47,7 @@ lightning.provider.onItemRemoved.addListener(async (calendar, item) => {
   console.log("Provider remove from calendar", item);
 });
 
-let ticks = {};
+const ticks = {};
 lightning.provider.onInit.addListener(async (calendar) => {
   console.log("Initializing", calendar);
 });
@@ -88,10 +88,10 @@ lightning.provider.onResetSync.addListener(async (calendar) => {
 // TODO - see comment in ext-calendar-provider.js. Provider should be registered after first tick so
 // onInit handler has a chance to execute, but before the async function is executed.
 setTimeout(async () => {
-  let calendars = await lightning.calendars.query({ type: "ext-" + messenger.runtime.id });
+  const calendars = await lightning.calendars.query({ type: "ext-" + messenger.runtime.id });
   await Promise.all(calendars.map((calendar) => lightning.calendars.remove(calendar.id)));
 
-  let calendar = await lightning.calendars.create({
+  const calendar = await lightning.calendars.create({
     type: "ext-" + messenger.runtime.id,
     url: "custom://test",
     name: "calendar ext"
@@ -100,14 +100,14 @@ setTimeout(async () => {
 
   await lightning.calendars.update(calendar.id, { color: "#FF0000", readOnly: true });
 
-  let calendar2 = await lightning.calendars.get(calendar.id);
+  const calendar2 = await lightning.calendars.get(calendar.id);
 
   console.log("got calendar", calendar2);
 
   await lightning.calendars.synchronize();
   await new Promise(resolve => setTimeout(resolve, 500));
 
-  let gotitem = await lightning.items.get(calendar2.id, "findme");
+  const gotitem = await lightning.items.get(calendar2.id, "findme");
   console.log("Retrieved item", gotitem);
 
   let gotitems = await lightning.items.query({ calendarId: calendar2.id });
@@ -153,16 +153,16 @@ setTimeout(async () => {
   await lightning.calendars.update(home.id, { enabled: home.enabled });
 
   if (home.enabled) {
-    let item = await lightning.items.create(home.id, { type: "event", title: "hello", location: "here", categories: ["Birthdays"], returnFormat: "ical" });
+    const item = await lightning.items.create(home.id, { type: "event", title: "hello", location: "here", categories: ["Birthdays"], returnFormat: "ical" });
     console.log("Created item", item, home);
 
-    let updated = await lightning.items.update(home.id, item.id, { title: "world" });
+    const updated = await lightning.items.update(home.id, item.id, { title: "world" });
     console.log("Updated item", updated);
 
 
     await new Promise(resolve => setTimeout(resolve, 500));
     // Moving & Removing
-    let home2 = await lightning.calendars.create({
+    const home2 = await lightning.calendars.create({
       type: "storage",
       url: "moz-storage-calendar://",
       name: "temp move",

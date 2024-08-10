@@ -148,7 +148,7 @@ messenger.windows.onCreated.addListener(addBoxes);
 // add boxes to all existing windows
 messenger.windows.getAll()
   .then(windows => {
-    for (let window of windows) {
+    for (const window of windows) {
       addBoxes(window);
     }
   });

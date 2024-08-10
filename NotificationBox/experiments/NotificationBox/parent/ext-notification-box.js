@@ -38,7 +38,7 @@
           this.parent.emitter
             .emit("buttonclicked", windowId, this.notificationId, id)
             .then((rv) => {
-              let keepOpen = rv.some((value) => value?.close === false);
+              const keepOpen = rv.some((value) => value?.close === false);
               if (!keepOpen) {
                 this.remove(/* closedByUser */ true);
               }
@@ -73,7 +73,7 @@
         }
       };
 
-      let element = await this.getNotificationBox().appendNotification(
+      const element = await this.getNotificationBox().appendNotification(
         `extension-notification-${this.notificationId}`,
         {
           label,
@@ -93,7 +93,7 @@
         "font",
       ];
 
-      let containerElement = getContainerElement(element);
+      const containerElement = getContainerElement(element);
       if (style) {
         const sanitizedStyles = Object.keys(style).filter((cssPropertyName) => {
           const parts = cssPropertyName.split("-");
@@ -107,7 +107,7 @@
           );
         });
 
-        for (let cssPropertyName of sanitizedStyles) {
+        for (const cssPropertyName of sanitizedStyles) {
           element.style[cssPropertyName] = style[cssPropertyName];
           if (containerElement) {
             containerElement.style[cssPropertyName] = style[cssPropertyName];
@@ -116,8 +116,8 @@
       }
 
       if (iconURL) {
-        let iconContainer = containerElement.querySelector(".icon-container");
-        let iconElement = iconContainer.querySelector("img");
+        const iconContainer = containerElement.querySelector(".icon-container");
+        const iconElement = iconContainer.querySelector("img");
         iconElement.remove();
 
         const win = this.parent.extension.windowManager.get(
@@ -222,7 +222,7 @@
           }
           // if there is no default bottom box, use our own
           if (!win.gExtensionNotificationBottomBox) {
-            let statusbar = win.document.querySelector('[class~="statusbar"]');
+            const statusbar = win.document.querySelector('[class~="statusbar"]');
             win.gExtensionNotificationBottomBox = new win.MozElements.NotificationBox(
               (element) => {
                 element.id = "extension-notification-bottom-box";
@@ -267,7 +267,7 @@
 
     onShutdown() {
       Services.obs.removeObserver(this, "domwindowclosed");
-      for (let notification of this.notificationsMap.values()) {
+      for (const notification of this.notificationsMap.values()) {
         notification.remove(/* closedByUser */ false);
       }
     }
@@ -275,7 +275,7 @@
     // Observer for the domwindowclosed notification, to remove
     // obsolete notifications from the notificationsMap.
     observe(aSubject) {
-      let win = this.context.extension.windowManager.convert(aSubject);
+      const win = this.context.extension.windowManager.convert(aSubject);
       this.notificationsMap.forEach((value, key) => {
         if (value.properties.windowId == win.id) {
           this.notificationsMap.delete(key);

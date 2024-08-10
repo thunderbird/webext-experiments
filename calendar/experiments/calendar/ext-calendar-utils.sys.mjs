@@ -28,7 +28,7 @@ export function unwrapCalendar(calendar) {
 export function getResolvedCalendarById(extension, id) {
   let calendar;
   if (id.endsWith("#cache")) {
-    let cached = cal.manager.getCalendarById(id.substring(0, id.length - 6));
+    const cached = cal.manager.getCalendarById(id.substring(0, id.length - 6));
     calendar = cached && isOwnCalendar(cached, extension) && cached.wrappedJSObject.mCachedCalendar;
   } else {
     calendar = cal.manager.getCalendarById(id);
@@ -54,7 +54,7 @@ export function convertCalendar(extension, calendar) {
     return null;
   }
 
-  let props = {
+  const props = {
     id: calendar.id,
     type: calendar.type,
     name: calendar.name,
@@ -139,7 +139,7 @@ export function convertItem(item, options, extension) {
     return null;
   }
 
-  let props = {};
+  const props = {};
 
   if (item instanceof Ci.calIEvent) {
     props.type = "event";
@@ -156,7 +156,7 @@ export function convertItem(item, options, extension) {
 
   if (isOwnCalendar(item.calendar, extension)) {
     props.metadata = {};
-    let cache = getCachedCalendar(item.calendar);
+    const cache = getCachedCalendar(item.calendar);
     try {
       // TODO This is a sync operation. Not great. Can we optimize this?
       props.metadata = JSON.parse(cache.getMetaData(item.id)) ?? {};
@@ -172,7 +172,7 @@ export function convertItem(item, options, extension) {
       formats = [formats];
     }
 
-    for (let format of formats) {
+    for (const format of formats) {
       switch (format) {
         case "ical":
           props.formats.ical = item.icalString;
@@ -243,7 +243,7 @@ export async function setupE10sBrowser(extension, browser, parent, initOptions={
     browser.contentwindow; // eslint-disable-line no-unused-expressions
   }
 
-  let sheets = [];
+  const sheets = [];
   if (initOptions.browser_style) {
     delete initOptions.browser_style;
     sheets.push("chrome://browser/content/extension.css");
@@ -253,13 +253,13 @@ export async function setupE10sBrowser(extension, browser, parent, initOptions={
 
   const initBrowser = () => {
     ExtensionParent.apiManager.emit("extension-browser-inserted", browser);
-    let mm = browser.messageManager;
+    const mm = browser.messageManager;
     mm.loadFrameScript(
       "chrome://extensions/content/ext-browser-content.js",
       false,
       true
     );
-    let options = Object.assign({
+    const options = Object.assign({
       allowScriptsToClose: true,
       blockParser: false,
       maxWidth: 800,

@@ -10,7 +10,7 @@ this.calendarItemDetails = class extends ExtensionAPI {
   onLoadCalendarItemPanel(window, origLoadCalendarItemPanel, iframeId, url) {
     const { setupE10sBrowser } = ChromeUtils.importESModule("resource://tb-experiments-calendar/experiments/calendar/ext-calendar-utils.sys.mjs");
 
-    let res = origLoadCalendarItemPanel(iframeId, url);
+    const res = origLoadCalendarItemPanel(iframeId, url);
     if (this.extension.manifest.calendar_item_details) {
       let panelFrame;
       if (window.tabmail) {
@@ -20,27 +20,27 @@ this.calendarItemDetails = class extends ExtensionAPI {
       }
 
       panelFrame.contentWindow.addEventListener("load", (event) => {
-        let document = event.target.ownerGlobal.document;
+        const document = event.target.ownerGlobal.document;
 
-        let widgetId = makeWidgetId(this.extension.id);
+        const widgetId = makeWidgetId(this.extension.id);
 
-        let tabs = document.getElementById("event-grid-tabs");
-        let tab = document.createXULElement("tab");
+        const tabs = document.getElementById("event-grid-tabs");
+        const tab = document.createXULElement("tab");
         tabs.appendChild(tab);
         tab.setAttribute("label", this.extension.manifest.calendar_item_details.default_title);
         tab.setAttribute("id", widgetId + "-calendarItemDetails-tab");
         tab.setAttribute("image", this.extension.manifest.calendar_item_details.default_icon);
         tab.querySelector(".tab-icon").style.maxHeight = "19px";
 
-        let tabpanels = document.getElementById("event-grid-tabpanels");
-        let tabpanel = document.createXULElement("tabpanel");
+        const tabpanels = document.getElementById("event-grid-tabpanels");
+        const tabpanel = document.createXULElement("tabpanel");
         tabpanels.appendChild(tabpanel);
         tabpanel.setAttribute("id", widgetId + "-calendarItemDetails-tabpanel");
         tabpanel.setAttribute("flex", "1");
 
-        let browser = document.createXULElement("browser");
+        const browser = document.createXULElement("browser");
         browser.setAttribute("flex", "1");
-        let loadPromise = setupE10sBrowser(this.extension, browser, tabpanel);
+        const loadPromise = setupE10sBrowser(this.extension, browser, tabpanel);
 
         return loadPromise.then(() => {
           browser.fixupAndLoadURIString(this.extension.manifest.calendar_item_details.default_content, { triggeringPrincipal: this.extension.principal });
@@ -52,9 +52,9 @@ this.calendarItemDetails = class extends ExtensionAPI {
   }
 
   onStartup() {
-    let calendarItemDetails = this.extension.manifest?.calendar_item_details;
+    const calendarItemDetails = this.extension.manifest?.calendar_item_details;
     if (calendarItemDetails) {
-      let localize = this.extension.localize.bind(this.extension);
+      const localize = this.extension.localize.bind(this.extension);
 
       if (calendarItemDetails.default_icon) {
         calendarItemDetails.default_icon = this.extension.getURL(localize(calendarItemDetails.default_icon));
@@ -75,7 +75,7 @@ this.calendarItemDetails = class extends ExtensionAPI {
       ],
       onLoadWindow: (window) => {
         if (window.location.href == "chrome://messenger/content/messenger.xhtml") {
-          let orig = window.onLoadCalendarItemPanel;
+          const orig = window.onLoadCalendarItemPanel;
           window.onLoadCalendarItemPanel = this.onLoadCalendarItemPanel.bind(this, window, orig.bind(window));
           window._onLoadCalendarItemPanelOrig = orig;
         } else {
@@ -89,7 +89,7 @@ this.calendarItemDetails = class extends ExtensionAPI {
   onShutdown() {
     ExtensionSupport.unregisterWindowListener("ext-calendarItemDetails-" + this.extension.id);
 
-    for (let wnd of ExtensionSupport.openWindows) {
+    for (const wnd of ExtensionSupport.openWindows) {
       if (wnd.location.href == "chrome://messenger/content/messenger.xhtml") {
         if (wnd._onLoadCalendarItemPanelOrig) {
           wnd.onLoadCalendarItemPanel = wnd._onLoadCalendarItemPanelOrig;
@@ -98,7 +98,7 @@ this.calendarItemDetails = class extends ExtensionAPI {
       }
     }
   }
-  getAPI(context) {
+  getAPI(_context) {
     return { calendar: { itemDetails: {} } };
   }
 };
