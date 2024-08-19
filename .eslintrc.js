@@ -50,6 +50,9 @@ module.exports = {
         global: true,
         Services: true,
       },
+      rules: {
+        "mozilla/reject-importGlobalProperties": "off"
+      }
     }
   ]
 };
