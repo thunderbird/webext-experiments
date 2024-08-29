@@ -91,7 +91,7 @@ to be filled in from the start, but it will help over the course of the experime
 | Description   | API providing access to the address book
 | Status        | Draft
 | Compatibility | Thunderbird 63
-| Tracking      | [issue #1](https://github.com/thundernest/tb-web-ext-experiments/issues/1) / [bug 1396172](https://bugzilla.mozilla.org/show_bug.cgi?id=1396172)
+| Tracking      | [issue #1](https://github.com/thunderbird/webext-experiments/issues/1) / [bug 1396172](https://bugzilla.mozilla.org/show_bug.cgi?id=1396172)
 
 Valid status values are:
 * `Draft`: Initial commit, discussing design in linked github issue. Depending on the nature of the Experiment, it may not get past this state.
