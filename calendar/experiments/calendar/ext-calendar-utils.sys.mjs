@@ -118,6 +118,12 @@ export function propsToItem(props, baseItem) {
     if (props.categories) {
       item.setCategories(props.categories);
     }
+    if (props.status) {
+      item.setProperty("status", props.status);
+    }
+    if (props.priority) {
+      item.setProperty("priority", props.priority);
+    }
 
     if (props.type == "event") {
       // TODO need to do something about timezone
@@ -129,6 +135,12 @@ export function propsToItem(props, baseItem) {
       }
     } else if (props.type == "task") {
       // entryDate, dueDate, completedDate, isCompleted, duration
+      if (props.dueDate) {
+        item.dueDate = cal.createDateTime(props.dueDate);
+      }
+      if (props.percent) {
+        item.percentComplete =  props.percent;
+      }
     }
   }
   return item;
@@ -141,9 +153,9 @@ export function convertItem(item, options, extension) {
 
   const props = {};
 
-  if (item instanceof Ci.calIEvent) {
+  if (item.isEvent()) {
     props.type = "event";
-  } else if (item instanceof Ci.calITodo) {
+  } else if (item.isTodo()) {
     props.type = "task";
   }
 
@@ -153,6 +165,9 @@ export function convertItem(item, options, extension) {
   props.description = item.getProperty("description") || "";
   props.location = item.getProperty("location") || "";
   props.categories = item.getCategories();
+  props.status = item.getProperty("status") || "";
+  props.priority = item.getProperty("priority") || 0 ;
+
 
   if (isOwnCalendar(item.calendar, extension)) {
     props.metadata = {};
@@ -192,6 +207,12 @@ export function convertItem(item, options, extension) {
     props.endDate = item.endDate.icalString;
   } else if (props.type == "task") {
     // TODO extra properties
+    props.percent = item.percentComplete;
+    if (item.dueDate) {
+      props.dueDate = item.dueDate.icalString;  
+    } else {
+      props.dueDate = null;
+    }
   }
 
   return props;

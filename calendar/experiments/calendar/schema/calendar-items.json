@@ -16,8 +16,12 @@
           "categories": { "type": "array", "items": { "type": "string" }, "optional": true },
           "startDate": { "type": "string", "optional": true },
           "endDate": { "type": "string", "optional": true },
+          "dueDate": { "type": "string", "optional": true },
+          "percent" : { "type": "number", "optional": true },
+          "priority": { "type": "number", "optional": true },
           "formats": { "$ref": "RawCalendarItem", "optional": true },
-          "metadata": { "type": "object", "additionalProperties": { "type": "any" }, "optional": true }
+          "metadata": { "type": "object", "additionalProperties": { "type": "any" }, "optional": true },
+          "status": { "type": "string", "optional": true }
         }
       },
       {
@@ -98,7 +102,9 @@
               "type": { "type": "string", "enum": ["event", "task"], "optional": true },
               "rangeStart": { "type": "string", "optional": true },
               "rangeEnd": { "type": "string", "optional": true },
-              "expand": { "type": "boolean", "optional": true }
+              "expand": { "type": "boolean", "optional": true },
+              "status": { "type": "string", "optional": true },
+              "priority": { "type": "number", "optional": true }
             }
           }
         ]
@@ -121,8 +127,12 @@
               "categories": { "type": "array", "items": { "type": "string" }, "optional": true },
               "startDate": { "type": "string", "optional": true },
               "endDate": { "type": "string", "optional": true },
+              "dueDate": { "type": "string", "optional": true },
+              "percent" : { "type": "number", "optional": true },
+              "priority": { "type": "number", "optional": true },
               "formats": { "$ref": "RawCalendarItem", "optional": true },
               "returnFormat": { "$ref": "ReturnFormat", "optional": true },
+              "status": { "type": "string", "optional": true },
               "metadata": { "type": "object", "properties": {}, "additionalProperties": { "type": "any" }, "optional": true }
             }
           }
@@ -145,8 +155,12 @@
               "categories": { "type": "array", "items": { "type": "string" }, "optional": true },
               "startDate": { "type": "string", "optional": true },
               "endDate": { "type": "string", "optional": true },
+              "dueDate": { "type": "string", "optional": true },
+              "percent" : { "type": "number", "optional": true },
+              "priority": { "type": "number", "optional": true },
               "formats": { "$ref": "RawCalendarItem", "optional": true },
               "returnFormat": { "$ref": "ReturnFormat", "optional": true },
+              "status": { "type": "string", "optional": true },
               "metadata": { "type": "object", "additionalProperties": { "type": "any" }, "optional": true }
             }
           }
