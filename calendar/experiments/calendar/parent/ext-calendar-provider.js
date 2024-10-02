@@ -144,7 +144,8 @@ class ExtCalendar extends cal.provider.BaseClass {
     super.id = val;
     if (this.id && this.uri) {
       try {
-        this.capabilities = JSON.parse(super.getProperty("extensionCapabilities"));
+        this.capabilities = JSON.parse(super.getProperty("extensionCapabilities"))|| 
+          this.extension.manifest.calendar_provider.capabilities || {};
       } catch (e) {
         this.capabilities = this.extension.manifest.calendar_provider.capabilities || {};
       }
