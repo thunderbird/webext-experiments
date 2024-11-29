@@ -13,7 +13,8 @@ The NotificationBox Experiment allows to show notifications inside Thunderbird.
 Usage
 -----
 
-Add the NotificationBox Experiment to your add-on. Your `manifest.json` needs an entry like this:
+Add the NotificationBox Experiment to your add-on as mentioned in the [repo README](../README.md#using-experiments-in-your-add-ons)
+. Your `manifest.json` needs an entry like this:
 
 ```
 "experiment_apis": {
