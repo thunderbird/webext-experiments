@@ -12,7 +12,12 @@ Cu.importGlobalProperties(["URL"]);
 
 this.calendarItemDetails = class extends ExtensionAPI {
   onLoadCalendarItemPanel(window, origLoadCalendarItemPanel, iframeId, url) {
-    const { setupE10sBrowser } = ChromeUtils.importESModule("resource://tb-experiments-calendar/experiments/calendar/ext-calendar-utils.sys.mjs");
+    const uuid = this.extension.uuid;
+    const root = `experiments-calendar-${uuid}`;
+    const query = this.extension.manifest.version;
+    const { setupE10sBrowser } = ChromeUtils.importESModule(
+      `resource://${root}/experiments/calendar/ext-calendar-utils.sys.mjs?${query}`
+    );
 
     const res = origLoadCalendarItemPanel(iframeId, url);
     if (!this.extension.manifest.calendar_item_details) {
@@ -96,7 +101,12 @@ this.calendarItemDetails = class extends ExtensionAPI {
   }
 
   onLoadSummary(window) {
-    const { setupE10sBrowser } = ChromeUtils.importESModule("resource://tb-experiments-calendar/experiments/calendar/ext-calendar-utils.sys.mjs");
+    const uuid = this.extension.uuid;
+    const root = `experiments-calendar-${uuid}`;
+    const query = this.extension.manifest.version;
+    const { setupE10sBrowser } = ChromeUtils.importESModule(
+      `resource://${root}/experiments/calendar/ext-calendar-utils.sys.mjs?${query}`
+    );
 
     const document = window.document;
 
