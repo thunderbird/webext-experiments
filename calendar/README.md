@@ -5,7 +5,7 @@ This extension is a testing ground for calendar related MailExtensions APIs.
 
 The APIs available are [documented here](https://docs.google.com/document/d/15awbKiVfdOTmsRpgD1dxm3gvOt08EQZDSnMl8QRBFoY/edit). Note
 however there may be divergence while we discuss differences and test things out, so if you need
-reliable API documentation please see the relevant [schema files](./schema/).
+reliable API documentation please see the relevant [schema files](./experiments/calendar/schema/).
 
 
 | Item          | Value
@@ -14,3 +14,5 @@ reliable API documentation please see the relevant [schema files](./schema/).
 | Status        | Draft
 | Compatibility | Thunderbird 128
 | Tracking      | [bug 1627205](https://bugzilla.mozilla.org/show_bug.cgi?id=1627205)
+
+To use this Experiment, check out the [repo README](../README.md#using-experiments-in-your-add-ons)
