@@ -508,7 +508,7 @@ this.calendar_provider = class extends ExtensionAPI {
       `resource://${root}/experiments/calendar/ext-calendar-utils.sys.mjs?${query}`
     );
 
-    ChromeUtils.registerWindowActor(`CalendarProvider-${uuid}`, { child: { esModuleURI: 
+    ChromeUtils.registerWindowActor(`CalendarProvider-${uuid}`, { child: { esModuleURI:
       `resource://${root}/experiments/calendar/child/ext-calendar-provider-actor.sys.mjs?${query}`
     }});
 
@@ -612,7 +612,7 @@ this.calendar_provider = class extends ExtensionAPI {
     if (isAppShutdown) {
       return;
     }
-    const uuid = context.extension.uuid;
+    const uuid = this.extension.uuid;
     const root = `experiments-calendar-${uuid}`;
     ExtensionSupport.unregisterWindowListener("ext-calendar-provider-creation-" + this.extension.id);
     ExtensionSupport.unregisterWindowListener("ext-calendar-provider-properties-" + this.extension.id);
