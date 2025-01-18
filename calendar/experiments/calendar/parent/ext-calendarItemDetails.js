@@ -33,9 +33,12 @@ this.calendarItemDetails = class extends ExtensionAPI {
     panelFrame.contentWindow.addEventListener("load", (event) => {
       const document = event.target.ownerGlobal.document;
 
-      let areas = this.extension.manifest.calendar_item_details.allowed_areas || ["secondary"];
-      if (!Array.isArray(areas)) {
-        areas = [areas];
+      let areas = [];
+      if (this.extension.manifest.calendar_item_details) {
+        areas = this.extension.manifest.calendar_item_details.allowed_areas || ["secondary"]
+        if (!Array.isArray(areas)) {
+          areas = [areas];
+        }
       }
 
       if (areas.includes("secondary")) {
@@ -122,11 +125,13 @@ this.calendarItemDetails = class extends ExtensionAPI {
     // Fix an annoying bug, this should be part of a different patch
     document.querySelector(".url-link").style.maxWidth = "42em";
 
-    let areas = this.extension.manifest.calendar_item_details.allowed_areas || ["secondary"];
-    if (!Array.isArray(areas)) {
-      areas = [areas];
+    let areas = [];
+    if (this.extension.manifest.calendar_item_details) {
+      areas = this.extension.manifest.calendar_item_details.allowed_areas || ["secondary"]
+      if (!Array.isArray(areas)) {
+        areas = [areas];
+      }
     }
-
 
     if (areas.includes("summary")) {
       const summaryBox = document.querySelector(".item-summary-box");
