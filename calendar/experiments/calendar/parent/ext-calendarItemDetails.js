@@ -113,7 +113,7 @@ this.calendarItemDetails = class extends ExtensionAPI {
     // Fix an annoying bug, this should be part of a different patch
     document.querySelector(".url-link").style.maxWidth = "42em";
 
-    let areas = this.extension.manifest.calendar_item_details.allowed_areas || ["secondary"];
+    let areas = this.extension.manifest.calendar_item_details?.allowed_areas || ["secondary"];
     if (!Array.isArray(areas)) {
       areas = [areas];
     }
