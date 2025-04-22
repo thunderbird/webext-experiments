@@ -72,7 +72,7 @@
           },
           "tasks": { "type": "boolean", "optional": true, "default": true },
           "events": { "type": "boolean", "optional": true, "default": true },
-          "remove_modes": {
+          "removeModes": {
             "type": "array",
             "optional": true,
             "default": ["unsubscribe"],
@@ -81,8 +81,8 @@
               "enum": ["unsubscribe", "delete"]
             }
           },
-          "requires_network": { "type": "boolean", "optional": true },
-          "minimum_refresh_interval": { "type": "integer", "minimum": -1, "optional": true },
+          "requiresNetwork": { "type": "boolean", "optional": true },
+          "minimumRefreshInterval": { "type": "integer", "minimum": -1, "optional": true },
           "mutable": { "type": "boolean", "optional": true, "default": true }
         }
       }
@@ -139,7 +139,12 @@
               "visible": { "type": "boolean", "optional": true },
               "showReminders": { "type": "boolean", "optional": true },
               "color": { "type": "string", "optional": true },
-              "capabilities": { "$ref": "CalendarCapabilities", "optional": true }
+              "capabilities": {
+                "type": "object",
+                "optional": true,
+                "additionalProperties": true,
+                "description": "This is normally CalendarCapabilities, but we don't want to inherit default values here"
+              }
             }
           }
         ]
@@ -159,8 +164,13 @@
               "readOnly": { "type": "boolean", "optional": true },
               "enabled": { "type": "boolean", "optional": true },
               "color": { "type": "string", "optional": true },
-              "capabilities": { "$ref": "CalendarCapabilities", "optional": true },
-              "lastError": { "type": "string", "optional": true }
+              "lastError": { "type": "string", "optional": true },
+              "capabilities": {
+                "type": "object",
+                "optional": true,
+                "additionalProperties": true,
+                "description": "This is normally CalendarCapabilities, but we don't want to inherit default values here"
+              }
             }
           }
         ]

@@ -101,6 +101,13 @@ this.calendar_calendars = class extends ExtensionAPI {
             if (typeof createProperties.showReminders != "undefined") {
               calendar.setProperty("suppressAlarms", !createProperties.showReminders);
             }
+            if (typeof createProperties.capabilities != "undefined") {
+              if (!isOwnCalendar(calendar, context.extension)) {
+                throw new ExtensionError("Cannot set capabilities on foreign calendar types");
+              }
+
+              calendar.setProperty("overrideCapabilities", JSON.stringify(createProperties.capabilities));
+            }
 
             cal.manager.registerCalendar(calendar);
 
@@ -145,17 +152,30 @@ this.calendar_calendars = class extends ExtensionAPI {
             if (updateProperties.capabilities) {
               // TODO validate capability names
               const unwrappedCalendar = calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject;
-              unwrappedCalendar.capabilities = Object.assign({}, unwrappedCalendar.capabilities, updateProperties.capabilities);
-              calendar.setProperty("extensionCapabilities", JSON.stringify(unwrappedCalendar.capabilities));
+              let overrideCapabilities;
+              try {
+                overrideCapabilities = JSON.parse(calendar.getProperty("overrideCapabilities")) || {};
+              } catch(e) {
+                overrideCapabilities = {};
+              }
+              for (const [key, value] of Object.entries(updateProperties.capabilities)) {
+                if (value === null) {
+                  continue;
+                }
+                unwrappedCalendar.capabilities[key] = value;
+                overrideCapabilities[key] = value;
+              }
+
+              calendar.setProperty("overrideCapabilities", JSON.stringify(overrideCapabilities));
             }
 
             if (updateProperties.lastError !== undefined) {
               if (updateProperties.lastError === null) {
-                calendar.setProperty("currentStatus", Cr.NS_ERROR_FAILURE);
-                calendar.setProperty("lastErrorMessage", updateProperties.lastError);
-              } else {
                 calendar.setProperty("currentStatus", Cr.NS_OK);
                 calendar.setProperty("lastErrorMessage", "");
+              } else {
+                calendar.setProperty("currentStatus", Cr.NS_ERROR_FAILURE);
+                calendar.setProperty("lastErrorMessage", updateProperties.lastError);
               }
             }
           },

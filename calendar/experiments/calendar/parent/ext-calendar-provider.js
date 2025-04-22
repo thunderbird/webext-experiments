@@ -143,13 +143,15 @@ class ExtCalendar extends cal.provider.BaseClass {
   set id(val) {
     super.id = val;
     if (this.id && this.uri) {
+      let overrideCapabilities;
       try {
-        this.capabilities = JSON.parse(super.getProperty("extensionCapabilities"));
+        overrideCapabilities = JSON.parse(super.getProperty("overrideCapabilities")) || {};
       } catch (e) {
-        this.capabilities = null;
+        overrideCapabilities = {};
       }
 
-      this.capabilities ??= this.extension.manifest.calendar_provider.capabilities || {};
+      const manifestCapabilities = this.extension.manifest.calendar_provider.capabilities || {};
+      this.capabilities = Object.assign({}, manifestCapabilities, overrideCapabilities);
 
       this.extension.emit("calendar.provider.onInit", this);
     }
@@ -225,11 +227,11 @@ class ExtCalendar extends cal.provider.BaseClass {
       case "capabilities.events.supported":
         return !(this.capabilities.events === false);
       case "capabilities.removeModes":
-        return Array.isArray(this.capabilities.remove_modes)
-          ? this.capabilities.remove_modes
+        return Array.isArray(this.capabilities.removeModes)
+          ? this.capabilities.removeModes
           : ["unsubscribe"];
       case "requiresNetwork":
-        return !(this.capabilities.requires_network === false);
+        return !(this.capabilities.requiresNetwork === false);
     }
 
     return super.getProperty(name);
@@ -527,7 +529,7 @@ this.calendar_provider = class extends ExtensionAPI {
           win.gIdentityNotification.removeAllNotifications();
         }
 
-        const minRefresh = calendar.capabilities?.minimumRefresh;
+        const minRefresh = calendar.capabilities?.minimumRefreshInterval;
 
         if (minRefresh) {
           const refInterval = win.document.getElementById("calendar-refreshInterval-menupopup");
@@ -607,6 +609,22 @@ this.calendar_provider = class extends ExtensionAPI {
 
           win.gAddonAdvance = new EventEmitter();
         }
+
+        const origCheckRequired = win.checkRequired;
+        win.checkRequired = () => {
+          origCheckRequired();
+          const addonPanel = win.document.getElementById("panel-addon-calendar-settings");
+          if (addonPanel.hidden) {
+            return;
+          }
+
+          const dialog = win.document.getElementById("calendar-creation-dialog");
+          if (addonPanel.dataset.addonNoForward == "true") {
+            dialog.setAttribute("buttondisabledaccept", "true");
+          } else {
+            dialog.removeAttribute("buttondisabledaccept");
+          }
+        };
       }
     });
   }
@@ -821,7 +839,7 @@ this.calendar_provider = class extends ExtensionAPI {
 
 
           // New calendar dialog
-          async setAdvanceAction({ forward, back, label }) {
+          async setAdvanceAction({ forward, back, label, canForward }) {
             const window = getNewCalendarWindow();
             if (!window) {
               throw new ExtensionError("New calendar wizard is not open");
@@ -842,6 +860,11 @@ this.calendar_provider = class extends ExtensionAPI {
             addonPanel.setAttribute("buttonlabelaccept", label);
             if (!addonPanel.hidden) {
               window.updateButton("accept", addonPanel);
+            }
+
+            if (typeof canForward === "boolean") {
+              addonPanel.dataset.addonNoForward = !canForward
+              window.checkRequired();
             }
           },
           onAdvanceNewCalendar: new EventManager({
