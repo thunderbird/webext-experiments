@@ -72,7 +72,7 @@
           },
           "tasks": { "type": "boolean", "optional": true, "default": true },
           "events": { "type": "boolean", "optional": true, "default": true },
-          "remove_modes": {
+          "removeModes": {
             "type": "array",
             "optional": true,
             "default": ["unsubscribe"],
@@ -81,8 +81,8 @@
               "enum": ["unsubscribe", "delete"]
             }
           },
-          "requires_network": { "type": "boolean", "optional": true },
-          "minimum_refresh_interval": { "type": "integer", "minimum": -1, "optional": true },
+          "requiresNetwork": { "type": "boolean", "optional": true },
+          "minimumRefreshInterval": { "type": "integer", "minimum": -1, "optional": true },
           "mutable": { "type": "boolean", "optional": true, "default": true }
         }
       }

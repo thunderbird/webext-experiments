@@ -227,11 +227,11 @@ class ExtCalendar extends cal.provider.BaseClass {
       case "capabilities.events.supported":
         return !(this.capabilities.events === false);
       case "capabilities.removeModes":
-        return Array.isArray(this.capabilities.remove_modes)
-          ? this.capabilities.remove_modes
+        return Array.isArray(this.capabilities.removeModes)
+          ? this.capabilities.removeModes
           : ["unsubscribe"];
       case "requiresNetwork":
-        return !(this.capabilities.requires_network === false);
+        return !(this.capabilities.requiresNetwork === false);
     }
 
     return super.getProperty(name);
@@ -529,7 +529,7 @@ this.calendar_provider = class extends ExtensionAPI {
           win.gIdentityNotification.removeAllNotifications();
         }
 
-        const minRefresh = calendar.capabilities?.minimumRefresh;
+        const minRefresh = calendar.capabilities?.minimumRefreshInterval;
 
         if (minRefresh) {
           const refInterval = win.document.getElementById("calendar-refreshInterval-menupopup");
