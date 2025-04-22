@@ -139,7 +139,12 @@
               "visible": { "type": "boolean", "optional": true },
               "showReminders": { "type": "boolean", "optional": true },
               "color": { "type": "string", "optional": true },
-              "capabilities": { "$ref": "CalendarCapabilities", "optional": true }
+              "capabilities": {
+                "type": "object",
+                "optional": true,
+                "additionalProperties": true,
+                "description": "This is normally CalendarCapabilities, but we don't want to inherit default values here"
+              }
             }
           }
         ]
@@ -159,8 +164,13 @@
               "readOnly": { "type": "boolean", "optional": true },
               "enabled": { "type": "boolean", "optional": true },
               "color": { "type": "string", "optional": true },
-              "capabilities": { "$ref": "CalendarCapabilities", "optional": true },
-              "lastError": { "type": "string", "optional": true }
+              "lastError": { "type": "string", "optional": true },
+              "capabilities": {
+                "type": "object",
+                "optional": true,
+                "additionalProperties": true,
+                "description": "This is normally CalendarCapabilities, but we don't want to inherit default values here"
+              }
             }
           }
         ]
