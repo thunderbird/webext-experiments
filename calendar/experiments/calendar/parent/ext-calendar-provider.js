@@ -8,6 +8,22 @@ var { ExtensionUtils: { ExtensionError } } = ChromeUtils.importESModule("resourc
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/ExtensionSupport.sys.mjs");
 
+var { CalItipEmailTransport } = ChromeUtils.importESModule("resource:///modules/CalItipEmailTransport.sys.mjs");
+
+// TODO move me
+// Have the server take care of scheduling. This can be de-duplicated in
+// CalItipEmailTransport.sys.mjs
+class CalItipNoEmailTransport extends CalItipEmailTransport {
+  wrappedJSObject = this;
+  QueryInterface = ChromeUtils.generateQI(["calIItipTransport"]);
+
+  sendItems() {
+    return true;
+  }
+}
+
+
+
 // TODO move me
 function getNewCalendarWindow() {
   // This window is missing a windowtype attribute
@@ -166,6 +182,14 @@ class ExtCalendar extends cal.provider.BaseClass {
     }
   }
 
+  get supportsScheduling() {
+    return this.capabilities.scheduling != "none";
+  }
+
+  getSchedulingSupport() {
+    return this;
+  }
+
   setProperty(name, value) {
     if (name === "readOnly" && this.capabilities.mutable === false) {
       return; // prevent change
@@ -189,6 +213,16 @@ class ExtCalendar extends cal.provider.BaseClass {
         if (this.capabilities.organizerName) {
           return this.capabilities.organizerName;
         }
+        break;
+      case "imip.identity.disabled":
+        return this.capabilities.scheduling == "none";
+      case "itip.transport":
+        if (this.capabilities.scheduling == "server") {
+          return new CalItipNoEmailTransport();
+        } else if (this.capabilities.scheduling == "none") {
+          return null;
+        }
+        // Else fall through and have super return the client email transport
         break;
 
       case "readOnly":

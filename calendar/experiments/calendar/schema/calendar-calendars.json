@@ -83,7 +83,13 @@
           },
           "requiresNetwork": { "type": "boolean", "optional": true },
           "minimumRefreshInterval": { "type": "integer", "minimum": -1, "optional": true },
-          "mutable": { "type": "boolean", "optional": true, "default": true }
+          "mutable": { "type": "boolean", "optional": true, "default": true },
+          "scheduling": {
+            "type": "string",
+            "optional": true,
+            "default": "client",
+            "enum": ["client", "server", "none"]
+          }
         }
       }
     ],
