@@ -13,6 +13,7 @@
           "instance": { "type": "string", "optional": true },
           "format": { "$ref": "CalendarItemFormats", "optional": true },
           "item": { "$ref": "RawCalendarItem" },
+          "editorRef": { "$ref": "EditorRef", "optional": true },
           "metadata": { "type": "object", "additionalProperties": { "type": "any" }, "optional": true }
         }
       },
@@ -42,6 +43,49 @@
           "date": { "type": "string" },
           "offset": { "type": "string" },
           "related": { "type": "string", "enum": ["absolute", "start", "end"] }
+        }
+      },
+      {
+        "id": "EditorRef",
+        "type": "object",
+        "description": "Reference to an open calendar editor context.",
+        "properties": {
+          "tabId": { "type": "integer", "optional": true },
+          "windowId": { "type": "integer", "optional": true },
+          "dialogOuterId": { "type": "integer", "optional": true }
+        }
+      },
+      {
+        "id": "EditorFieldUpdates",
+        "type": "object",
+        "properties": {
+          "title": { "type": "string", "optional": true },
+          "location": { "type": "string", "optional": true },
+          "description": { "type": "string", "optional": true }
+        }
+      },
+      {
+        "id": "EditorPropertyUpdates",
+        "type": "object",
+        "additionalProperties": {
+          "choices": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      },
+      {
+        "id": "EditorClosedAction",
+        "type": "string",
+        "enum": ["persisted", "discarded", "superseded"]
+      },
+      {
+        "id": "EditorClosedInfo",
+        "type": "object",
+        "properties": {
+          "editorRef": { "$ref": "EditorRef" },
+          "action": { "$ref": "EditorClosedAction" },
+          "reason": { "type": "string", "optional": true }
         }
       }
     ],
@@ -157,6 +201,24 @@
             "name": "getOptions",
             "optional": true,
             "properties": {
+              "returnFormat": { "$ref": "ReturnFormat", "optional": true },
+              "editorRef": { "$ref": "EditorRef", "optional": true }
+            }
+          }
+        ]
+      },
+      {
+        "name": "updateCurrent",
+        "async": true,
+        "type": "function",
+        "parameters": [
+          {
+            "type": "object",
+            "name": "updateOptions",
+            "properties": {
+              "editorRef": { "$ref": "EditorRef", "optional": true },
+              "fields": { "$ref": "EditorFieldUpdates", "optional": true },
+              "properties": { "$ref": "EditorPropertyUpdates", "optional": true },
               "returnFormat": { "$ref": "ReturnFormat", "optional": true }
             }
           }
@@ -220,6 +282,13 @@
               "returnFormat": { "$ref": "ReturnFormat", "optional": true }
             }
           }
+        ]
+      },
+      {
+        "name": "onEditorClosed",
+        "type": "function",
+        "parameters": [
+          { "name": "info", "$ref": "EditorClosedInfo" }
         ]
       }
     ]

@@ -7,6 +7,8 @@ var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/Exten
 var { ToolbarButtonAPI } = ChromeUtils.importESModule("resource:///modules/ExtensionToolbarButtons.sys.mjs");
 
 const calendarItemActionMap = new WeakMap();
+const CALITEM_EVENT_DIALOG_URL = "chrome://calendar/content/calendar-event-dialog.xhtml";
+const CALITEM_MESSENGER_URL = "chrome://messenger/content/messenger.xhtml";
 
 this.calendarItemAction = class extends ToolbarButtonAPI {
   static for(extension) {
@@ -109,7 +111,7 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
 
   // This is only necessary as part of the experiment, refactor when moving to core.
   paint(window) {
-    if (window.location.href == "chrome://calendar/content/calendar-event-dialog.xhtml") {
+    if (window.location.href == CALITEM_EVENT_DIALOG_URL) {
       this.toolbarId = "event-toolbar";
     } else {
       this.toolbarId = "event-tab-toolbar";
@@ -117,9 +119,82 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
     return super.paint(window);
   }
 
+  _getDialogOuterId(window) {
+    const outerId = window?.docShell?.outerWindowID ?? window?.windowUtils?.outerWindowID;
+    return typeof outerId == "number" ? outerId : null;
+  }
+
+  _getEditorClickContext(window) {
+    const href = window?.location?.href || "";
+    if (href == CALITEM_EVENT_DIALOG_URL) {
+      const dialogOuterId = this._getDialogOuterId(window);
+      const editorRef = {};
+      if (typeof dialogOuterId == "number") {
+        editorRef.dialogOuterId = dialogOuterId;
+      }
+      return {
+        editorType: "dialog",
+        editorRef,
+      };
+    }
+
+    if (href == CALITEM_MESSENGER_URL) {
+      const tabInfo = window.tabmail?.currentTabInfo || null;
+      if (tabInfo?.mode?.name == "calendarEvent") {
+        const editorRef = {};
+        const nativeTab = tabInfo.nativeTab || null;
+        const tabManager = this.extension?.tabManager;
+        if (tabManager && typeof tabManager.getWrapper == "function" && nativeTab) {
+          const tabWrapper = tabManager.getWrapper(nativeTab);
+          const tabId = tabWrapper?.id;
+          if (typeof tabId == "number") {
+            editorRef.tabId = tabId;
+          }
+        }
+        const windowManager = this.extension?.windowManager;
+        if (windowManager && typeof windowManager.getWrapper == "function") {
+          const windowWrapper = windowManager.getWrapper(window);
+          const windowId = windowWrapper?.id;
+          if (typeof windowId == "number") {
+            editorRef.windowId = windowId;
+          }
+        }
+        return {
+          editorType: "tab",
+          editorRef,
+        };
+      }
+    }
+
+    return {
+      editorType: "unknown",
+      editorRef: {},
+    };
+  }
+
   handleEvent(event) {
-    super.handleEvent(event);
     const window = event.target.ownerGlobal;
+    if (event.type == "mousedown" && event.button == 0) {
+      if (
+        event.target.tagName == "menu" ||
+        event.target.tagName == "menuitem" ||
+        event.target.getAttribute("type") == "menu"
+      ) {
+        return;
+      }
+
+      const clickContext = this._getEditorClickContext(window);
+      this.lastClickInfo = {
+        button: 0,
+        modifiers: this.global.clickModifiersFromEvent(event),
+        editorType: clickContext.editorType,
+        editorRef: clickContext.editorRef,
+      };
+      this.triggerAction(window);
+      return;
+    }
+
+    super.handleEvent(event);
 
     switch (event.type) {
       case "popupshowing": {
