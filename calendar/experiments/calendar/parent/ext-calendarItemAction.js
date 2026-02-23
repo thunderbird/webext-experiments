@@ -2,8 +2,6 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-var { ExtensionCommon: { makeWidgetId } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
-
 var { ExtensionParent } = ChromeUtils.importESModule("resource://gre/modules/ExtensionParent.sys.mjs");
 var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/ExtensionSupport.sys.mjs");
 var { ToolbarButtonAPI } = ChromeUtils.importESModule("resource:///modules/ExtensionToolbarButtons.sys.mjs");
@@ -57,9 +55,14 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
     // Core code only works for one toolbox/toolbarId. Calendar uses different ones. When porting
     // you can leave all of this out by either using the same ids, or adapting parent class code to
     // deal with ids per window url.
-    if (this.extension.startupReason == "ADDON_INSTALL") {
-      // Add it to the messenger window, the other one is already covered by parent code.
+    if (
+      this.extension.startupReason == "ADDON_INSTALL" ||
+      this.extension.startupReason == "ADDON_UPGRADE"
+    ) {
+      // Ensure both editor variants have the button in persisted toolbar sets
+      // on fresh install and profile migrations during add-on upgrade.
       this.addToCurrentSet("chrome://messenger/content/messenger.xhtml", "event-tab-toolbar");
+      this.addToCurrentSet("chrome://calendar/content/calendar-event-dialog.xhtml", "event-toolbar");
     }
   }
 
@@ -141,37 +144,15 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
     }
   }
 
-  onShutdown() {
+  onShutdown(isAppShutdown) {
+    if (isAppShutdown) {
+      return;
+    }
+
     // TODO browserAction uses static onUninstall, this doesn't work in an experiment.
+    // Do not mutate xulStore during shutdown to preserve user toolbar customizations on upgrades.
     const extensionId = this.extension.id;
     ExtensionSupport.unregisterWindowListener("ext-calendar-itemAction-" + extensionId);
-
-    const widgetId = makeWidgetId(extensionId);
-    const id = `${widgetId}-calendarItemAction-toolbarbutton`;
-
-    const windowURLs = [
-      "chrome://messenger/content/messenger.xhtml",
-      "chrome://calendar/content/calendar-event-dialog.xhtml"
-    ];
-
-    for (const windowURL of windowURLs) {
-      let currentSet = Services.xulStore.getValue(
-        windowURL,
-        "event-toolbar",
-        "currentset"
-      );
-      currentSet = currentSet.split(",");
-      const index = currentSet.indexOf(id);
-      if (index >= 0) {
-        currentSet.splice(index, 1);
-        Services.xulStore.setValue(
-          windowURL,
-          "event-toolbar",
-          "currentset",
-          currentSet.join(",")
-        );
-      }
-    }
   }
 };
 
