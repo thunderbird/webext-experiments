@@ -99,6 +99,28 @@
         }
       },
       {
+        "id": "EditorRef",
+        "type": "object",
+        "description": "Reference to the currently active event editor context.",
+        "properties": {
+          "tabId": {
+            "type": "integer",
+            "optional": true,
+            "description": "The extension tab id for tab based event editors."
+          },
+          "windowId": {
+            "type": "integer",
+            "optional": true,
+            "description": "The extension window id for tab based editors."
+          },
+          "dialogOuterId": {
+            "type": "integer",
+            "optional": true,
+            "description": "The native outer window id for dialog based editors."
+          }
+        }
+      },
+      {
         "id": "OnClickData",
         "type": "object",
         "description": "Information sent when a browser action is clicked.",
@@ -115,6 +137,17 @@
             "type": "integer",
             "optional": true,
             "description": "An integer value of button by which menu item was clicked."
+          },
+          "editorRef": {
+            "$ref": "EditorRef",
+            "optional": true,
+            "description": "Reference to the editor context where the action was invoked."
+          },
+          "editorType": {
+            "type": "string",
+            "enum": ["dialog", "tab", "unknown"],
+            "optional": true,
+            "description": "Editor variant where the action was invoked."
           }
         }
       }
@@ -651,4 +684,3 @@
     ]
   }
 ]
-
