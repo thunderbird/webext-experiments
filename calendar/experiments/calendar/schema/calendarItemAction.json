@@ -99,26 +99,10 @@
         }
       },
       {
-        "id": "EditorRef",
-        "type": "object",
-        "description": "Reference to the currently active event editor context.",
-        "properties": {
-          "tabId": {
-            "type": "integer",
-            "optional": true,
-            "description": "The extension tab id for tab based event editors."
-          },
-          "windowId": {
-            "type": "integer",
-            "optional": true,
-            "description": "The extension window id for tab based editors."
-          },
-          "dialogOuterId": {
-            "type": "integer",
-            "optional": true,
-            "description": "The native outer window id for dialog based editors."
-          }
-        }
+        "id": "EditorId",
+        "type": "string",
+        "description": "Opaque identifier for one specific open editor instance. Do not parse. Valid only while that exact editor instance remains open in the current Thunderbird session.",
+        "pattern": "^ed-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
       },
       {
         "id": "OnClickData",
@@ -138,14 +122,14 @@
             "optional": true,
             "description": "An integer value of button by which menu item was clicked."
           },
-          "editorRef": {
-            "$ref": "EditorRef",
+          "editorId": {
+            "$ref": "EditorId",
             "optional": true,
-            "description": "Reference to the editor context where the action was invoked."
+            "description": "Opaque identifier of the concrete editor context where the action was invoked."
           },
           "editorType": {
             "type": "string",
-            "enum": ["dialog", "tab", "unknown"],
+            "enum": ["dialog", "tab"],
             "optional": true,
             "description": "Editor variant where the action was invoked."
           }

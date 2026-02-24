@@ -8,7 +8,18 @@ var { ToolbarButtonAPI } = ChromeUtils.importESModule("resource:///modules/Exten
 
 const calendarItemActionMap = new WeakMap();
 const CALITEM_EVENT_DIALOG_URL = "chrome://calendar/content/calendar-event-dialog.xhtml";
+const CALITEM_EVENT_TAB_IFRAME_URL = "chrome://calendar/content/calendar-item-iframe.xhtml";
 const CALITEM_MESSENGER_URL = "chrome://messenger/content/messenger.xhtml";
+const CALITEM_EDITOR_TAB_MODES = new Set(["calendarEvent", "calendarTask"]);
+
+function getEditorContextBridgeForExtension(extension) {
+  const root = `experiments-calendar-${extension.uuid}`;
+  const query = extension.manifest.version;
+  const module = ChromeUtils.importESModule(
+    `resource://${root}/experiments/calendar/parent/ext-calendar-editor-context.sys.mjs?${query}`
+  );
+  return module.getEditorContextBridge(extension);
+}
 
 this.calendarItemAction = class extends ToolbarButtonAPI {
   static for(extension) {
@@ -16,7 +27,7 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
   }
 
   onStartup() {
-    // TODO this is only necessary in the experiment, can drop this when moving to core.
+    // Experiment compatibility path: localized calendar_item_action manifest wiring.
     const calendarItemAction = this.extension.manifest?.calendar_item_action;
     if (calendarItemAction) {
       const localize = this.extension.localize.bind(this.extension);
@@ -34,7 +45,7 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
       this.onManifestEntry("calendar_item_action");
     }
 
-    // TODO this is only necessary in the experiment, can refactor this when moving to core.
+    // Experiment compatibility path: ensure popupset exists in the editor dialog.
     ExtensionSupport.registerWindowListener("ext-calendar-itemAction-" + this.extension.id, {
       chromeURLs: ["chrome://calendar/content/calendar-event-dialog.xhtml"],
       onLoadWindow(win) {
@@ -43,7 +54,11 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
         if (!document.getElementById("mainPopupSet")) {
           const mainPopupSet = document.createElementNS("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul", "popupset");
           mainPopupSet.id = "mainPopupSet";
-          const dialog = document.querySelector("dialog");
+          const dialog = document.getElementsByTagName("dialog")[0] || null;
+          if (!dialog) {
+            console.error("[calendarItemAction] could not resolve dialog root for popupset injection");
+            return;
+          }
           dialog.insertBefore(mainPopupSet, dialog.firstElementChild);
         }
       }
@@ -92,6 +107,10 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
 
   close() {
     super.close();
+    if (this._editorBridge) {
+      this._editorBridge.clear();
+      this._editorBridge = null;
+    }
     calendarItemActionMap.delete(this.extension);
   }
 
@@ -124,52 +143,240 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
     return typeof outerId == "number" ? outerId : null;
   }
 
+  _getEditorOuterId(window) {
+    const outerId = window?.docShell?.outerWindowID ?? window?.windowUtils?.outerWindowID;
+    return typeof outerId == "number" ? outerId : null;
+  }
+
+  _getEditorBridge() {
+    if (!this._editorBridge) {
+      this._editorBridge = getEditorContextBridgeForExtension(this.extension);
+    }
+    return this._editorBridge;
+  }
+
+  _ensureDialogReleaseListener(window, editorId) {
+    if (!window || !editorId) {
+      return;
+    }
+
+    if (!this._dialogReleaseByWindow) {
+      this._dialogReleaseByWindow = new WeakMap();
+    }
+
+    const previous = this._dialogReleaseByWindow.get(window);
+    if (previous?.editorId == editorId) {
+      return;
+    }
+    if (previous?.onUnload) {
+      window.removeEventListener("unload", previous.onUnload, true);
+      this._getEditorBridge().releaseEditorId(previous.editorId);
+    }
+
+    const onUnload = () => {
+      this._getEditorBridge().releaseEditorId(editorId);
+      window.removeEventListener("unload", onUnload, true);
+      this._dialogReleaseByWindow.delete(window);
+    };
+
+    window.addEventListener("unload", onUnload, true);
+    this._dialogReleaseByWindow.set(window, { editorId, onUnload });
+  }
+
+  _isCalendarEditorTabInfo(tabInfo) {
+    const modeName = tabInfo?.mode?.name || "";
+    if (CALITEM_EDITOR_TAB_MODES.has(modeName)) {
+      return true;
+    }
+    const editorWindow = tabInfo?.iframe?.contentWindow || tabInfo?.iframe?.contentDocument?.defaultView || null;
+    const href = editorWindow?.location?.href || "";
+    return href.startsWith(CALITEM_EVENT_DIALOG_URL) || href.startsWith(CALITEM_EVENT_TAB_IFRAME_URL);
+  }
+
+  _isCalendarEditorWindow(window) {
+    const href = window?.location?.href || "";
+    return href.startsWith(CALITEM_EVENT_DIALOG_URL) || href.startsWith(CALITEM_EVENT_TAB_IFRAME_URL);
+  }
+
+  _getSelectedTabInfo(window) {
+    const tabmail = window?.tabmail || null;
+    const tabInfoList = Array.isArray(tabmail?.tabInfo) ? tabmail.tabInfo : null;
+    if (!tabInfoList || !tabInfoList.length) {
+      return null;
+    }
+
+    const selectedIndex = tabmail?.tabContainer?.selectedIndex;
+    if (Number.isInteger(selectedIndex) && selectedIndex >= 0 && selectedIndex < tabInfoList.length) {
+      return tabInfoList[selectedIndex];
+    }
+
+    return tabmail.currentTabInfo || null;
+  }
+
+  _getManagedTabIdFromTabInfo(tabInfo) {
+    const tabManager = this.extension?.tabManager;
+    if (!tabManager || typeof tabManager.getWrapper != "function") {
+      console.error("[calendarItemAction] tabManager unavailable while resolving tab id");
+      return null;
+    }
+    if (!this._isCalendarEditorTabInfo(tabInfo)) {
+      return null;
+    }
+    try {
+      const tabWrapper = tabManager.getWrapper(tabInfo);
+      const tabId = tabWrapper?.id;
+      if (typeof tabId == "number") {
+        return tabId;
+      }
+      console.error("[calendarItemAction] tabManager.getWrapper(tabInfo) returned no numeric id", {
+        mode: tabInfo?.mode?.name || "",
+        hasNativeTab: !!tabInfo?.nativeTab,
+      });
+      return null;
+    } catch (e) {
+      console.error("[calendarItemAction] tabManager.getWrapper(tabInfo) failed", {
+        mode: tabInfo?.mode?.name || "",
+        hasNativeTab: !!tabInfo?.nativeTab,
+        error: String(e),
+      });
+      return null;
+    }
+  }
+
+  _getCalendarTabInfoForEditorWindow(window) {
+    if (!window || !this._isCalendarEditorWindow(window)) {
+      return null;
+    }
+    const ownerWindow = window.ownerGlobal || null;
+    if (!ownerWindow || ownerWindow.location?.href != CALITEM_MESSENGER_URL) {
+      return null;
+    }
+    const tabInfoList = ownerWindow.tabmail && Array.isArray(ownerWindow.tabmail.tabInfo)
+      ? ownerWindow.tabmail.tabInfo
+      : [];
+    for (const tabInfo of tabInfoList) {
+      if (!this._isCalendarEditorTabInfo(tabInfo)) {
+        continue;
+      }
+      const tabEditorWindow = tabInfo.iframe?.contentWindow || tabInfo.iframe?.contentDocument?.defaultView || null;
+      if (tabEditorWindow == window) {
+        return tabInfo;
+      }
+    }
+    return null;
+  }
+
+  _getTabEditorIdFromMessengerWindow(window) {
+    if (!window || window.location?.href != CALITEM_MESSENGER_URL) {
+      return null;
+    }
+    const tabInfo = this._getSelectedTabInfo(window);
+    if (!this._isCalendarEditorTabInfo(tabInfo)) {
+      console.error("[calendarItemAction] current tab is not a calendar editor tab", {
+        mode: tabInfo?.mode?.name || "",
+        iframeHref: tabInfo?.iframe?.contentWindow?.location?.href || "",
+      });
+      return null;
+    }
+    const tabId = this._getManagedTabIdFromTabInfo(tabInfo);
+    if (typeof tabId != "number") {
+      console.error("[calendarItemAction] could not resolve managed tab id for calendar editor tab", {
+        mode: tabInfo?.mode?.name || "",
+        iframeHref: tabInfo?.iframe?.contentWindow?.location?.href || "",
+        iframeId: tabInfo?.iframe?.id || "",
+      });
+      return null;
+    }
+    const editorWindow = tabInfo?.iframe?.contentWindow || tabInfo?.iframe?.contentDocument?.defaultView || null;
+    const editorOuterId = this._getEditorOuterId(editorWindow);
+    if (typeof editorOuterId != "number") {
+      console.error("[calendarItemAction] could not resolve tab editor outer window id from messenger window", {
+        tabId,
+        mode: tabInfo?.mode?.name || "",
+      });
+      return null;
+    }
+    return this._getEditorBridge().registerTabTarget(tabId, editorOuterId);
+  }
+
+  _getTabEditorIdFromEditorWindow(window) {
+    const tabInfo = this._getCalendarTabInfoForEditorWindow(window);
+    if (!tabInfo) {
+      console.error("[calendarItemAction] could not map editor window to tabInfo", {
+        windowHref: window?.location?.href || "",
+      });
+      return null;
+    }
+    const tabId = this._getManagedTabIdFromTabInfo(tabInfo);
+    if (typeof tabId != "number") {
+      console.error("[calendarItemAction] could not resolve managed tab id from editor window", {
+        mode: tabInfo?.mode?.name || "",
+      });
+      return null;
+    }
+    const editorWindow = tabInfo?.iframe?.contentWindow || tabInfo?.iframe?.contentDocument?.defaultView || null;
+    const editorOuterId = this._getEditorOuterId(editorWindow);
+    if (typeof editorOuterId != "number") {
+      console.error("[calendarItemAction] could not resolve tab editor outer window id from editor window", {
+        tabId,
+        mode: tabInfo?.mode?.name || "",
+      });
+      return null;
+    }
+    return this._getEditorBridge().registerTabTarget(tabId, editorOuterId);
+  }
+
+  _getTriggerWindow(window, editorType) {
+    if (!window) {
+      return null;
+    }
+    if (editorType == "tab" && window.location?.href == CALITEM_EVENT_DIALOG_URL) {
+      const ownerWindow = window.ownerGlobal || null;
+      if (ownerWindow?.location?.href == CALITEM_MESSENGER_URL) {
+        return ownerWindow;
+      }
+    }
+    return window;
+  }
+
   _getEditorClickContext(window) {
     const href = window?.location?.href || "";
-    if (href == CALITEM_EVENT_DIALOG_URL) {
-      const dialogOuterId = this._getDialogOuterId(window);
-      const editorRef = {};
-      if (typeof dialogOuterId == "number") {
-        editorRef.dialogOuterId = dialogOuterId;
+    if (href == CALITEM_MESSENGER_URL) {
+      const editorId = this._getTabEditorIdFromMessengerWindow(window);
+      if (editorId) {
+        return {
+          editorType: "tab",
+          editorId,
+        };
       }
+      return null;
+    }
+
+    if (href == CALITEM_EVENT_DIALOG_URL) {
+      const tabEditorId = this._getTabEditorIdFromEditorWindow(window);
+      if (tabEditorId) {
+        return {
+          editorType: "tab",
+          editorId: tabEditorId,
+        };
+      }
+
+      const dialogOuterId = this._getDialogOuterId(window);
+      if (typeof dialogOuterId != "number") {
+        return null;
+      }
+      const dialogEditorId = this._getEditorBridge().registerDialogTarget(dialogOuterId);
+      if (!dialogEditorId) {
+        return null;
+      }
+      this._ensureDialogReleaseListener(window, dialogEditorId);
       return {
         editorType: "dialog",
-        editorRef,
+        editorId: dialogEditorId,
       };
     }
 
-    if (href == CALITEM_MESSENGER_URL) {
-      const tabInfo = window.tabmail?.currentTabInfo || null;
-      if (tabInfo?.mode?.name == "calendarEvent") {
-        const editorRef = {};
-        const nativeTab = tabInfo.nativeTab || null;
-        const tabManager = this.extension?.tabManager;
-        if (tabManager && typeof tabManager.getWrapper == "function" && nativeTab) {
-          const tabWrapper = tabManager.getWrapper(nativeTab);
-          const tabId = tabWrapper?.id;
-          if (typeof tabId == "number") {
-            editorRef.tabId = tabId;
-          }
-        }
-        const windowManager = this.extension?.windowManager;
-        if (windowManager && typeof windowManager.getWrapper == "function") {
-          const windowWrapper = windowManager.getWrapper(window);
-          const windowId = windowWrapper?.id;
-          if (typeof windowId == "number") {
-            editorRef.windowId = windowId;
-          }
-        }
-        return {
-          editorType: "tab",
-          editorRef,
-        };
-      }
-    }
-
-    return {
-      editorType: "unknown",
-      editorRef: {},
-    };
+    return null;
   }
 
   handleEvent(event) {
@@ -184,13 +391,28 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
       }
 
       const clickContext = this._getEditorClickContext(window);
+      if (!clickContext) {
+        console.error("[calendarItemAction] click ignored: could not resolve editor context", {
+          windowHref: window?.location?.href || "",
+          targetTag: event.target?.tagName || "",
+        });
+        return;
+      }
+      const triggerWindow = this._getTriggerWindow(window, clickContext.editorType);
+      if (!triggerWindow) {
+        console.error("[calendarItemAction] click ignored: could not resolve trigger window", {
+          editorType: clickContext.editorType,
+          windowHref: window?.location?.href || "",
+        });
+        return;
+      }
       this.lastClickInfo = {
         button: 0,
         modifiers: this.global.clickModifiersFromEvent(event),
         editorType: clickContext.editorType,
-        editorRef: clickContext.editorRef,
+        editorId: clickContext.editorId,
       };
-      this.triggerAction(window);
+      this.triggerAction(triggerWindow);
       return;
     }
 
@@ -224,10 +446,13 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
       return;
     }
 
-    // TODO browserAction uses static onUninstall, this doesn't work in an experiment.
     // Do not mutate xulStore during shutdown to preserve user toolbar customizations on upgrades.
     const extensionId = this.extension.id;
     ExtensionSupport.unregisterWindowListener("ext-calendar-itemAction-" + extensionId);
+    if (this._editorBridge) {
+      this._editorBridge.clear();
+      this._editorBridge = null;
+    }
   }
 };
 

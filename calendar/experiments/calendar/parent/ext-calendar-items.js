@@ -9,7 +9,21 @@ var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/Exten
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 const EVENT_DIALOG_URL = "chrome://calendar/content/calendar-event-dialog.xhtml";
+const EVENT_TAB_IFRAME_URL = "chrome://calendar/content/calendar-item-iframe.xhtml";
 const MESSENGER_URL = "chrome://messenger/content/messenger.xhtml";
+const EVENT_PANEL_IFRAME_ID = "calendar-item-panel-iframe";
+const EVENT_TITLE_FIELD_ID = "item-title";
+const EVENT_LOCATION_FIELD_ID = "item-location";
+const EVENT_DESCRIPTION_FIELD_ID = "item-description";
+const EVENT_EDITOR_TAB_MODES = new Set(["calendarEvent", "calendarTask"]);
+function getEditorContextBridgeForExtension(extension) {
+  const root = `experiments-calendar-${extension.uuid}`;
+  const query = extension.manifest.version;
+  const module = ChromeUtils.importESModule(
+    `resource://${root}/experiments/calendar/parent/ext-calendar-editor-context.sys.mjs?${query}`
+  );
+  return module.getEditorContextBridge(extension);
+}
 
 this.calendar_items = class extends ExtensionAPI {
   _ensureEditorClosedListenerSet() {
@@ -40,74 +54,111 @@ this.calendar_items = class extends ExtensionAPI {
       try {
         listener(info);
       } catch (e) {
-        console.error("[calendar.items] onEditorClosed listener failed", e);
+        console.error("[calendar.items] onTrackedEditorClosed listener failed", e);
       }
     }
   }
 
-  _makeEditorKey(editorRef) {
-    const ref = editorRef && typeof editorRef == "object" ? editorRef : {};
-    if (typeof ref.dialogOuterId == "number") {
-      return `dialog:${ref.dialogOuterId}`;
+  _getEditorBridge(extension) {
+    if (!extension) {
+      throw new ExtensionError("Missing extension context");
     }
-    if (typeof ref.tabId == "number") {
-      return `tab:${ref.tabId}`;
+    if (!this._editorBridgeByExtension) {
+      this._editorBridgeByExtension = new WeakMap();
     }
-    if (typeof ref.windowId == "number") {
-      return `window:${ref.windowId}`;
+    let bridge = this._editorBridgeByExtension.get(extension);
+    if (!bridge) {
+      bridge = getEditorContextBridgeForExtension(extension);
+      this._editorBridgeByExtension.set(extension, bridge);
     }
-    return "";
+    return bridge;
   }
 
-  _isWindowManagerType(windowType) {
-    switch (windowType) {
-      case "mail:3pane":
-      case "msgcompose":
-      case "mail:messageWindow":
-      case "mail:extensionPopup":
-        return true;
-      default:
-        return false;
+  _clearEditorBridge(extension) {
+    if (!extension || !this._editorBridgeByExtension) {
+      return;
     }
+    const bridge = this._editorBridgeByExtension.get(extension);
+    if (!bridge) {
+      return;
+    }
+    bridge.clear();
+    this._editorBridgeByExtension.delete(extension);
   }
 
-  _getManagedWindowId(context, window) {
-    try {
-      const manager = context?.extension?.windowManager;
-      if (!manager || typeof manager.getWrapper != "function") {
-        return null;
-      }
-      const windowType = window?.document?.documentElement?.getAttribute?.("windowtype") || "";
-      if (!this._isWindowManagerType(windowType)) {
-        return null;
-      }
-      const wrapper = manager.getWrapper(window);
-      const id = wrapper?.id;
-      return typeof id == "number" ? id : null;
-    } catch (e) {
-      console.error("[calendar.items] get managed window id failed", e);
+  _isCalendarEditorTabInfo(tabInfo) {
+    const modeName = tabInfo?.mode?.name || "";
+    if (EVENT_EDITOR_TAB_MODES.has(modeName)) {
+      return true;
+    }
+    const editorWindow = tabInfo?.iframe?.contentWindow || tabInfo?.iframe?.contentDocument?.defaultView || null;
+    const href = editorWindow?.location?.href || "";
+    return href.startsWith(EVENT_DIALOG_URL) || href.startsWith(EVENT_TAB_IFRAME_URL);
+  }
+
+  _isCalendarEditorWindow(window) {
+    const href = window?.location?.href || "";
+    return href.startsWith(EVENT_DIALOG_URL) || href.startsWith(EVENT_TAB_IFRAME_URL);
+  }
+
+  _getCalendarTabInfoForEditorWindow(window) {
+    if (!window || !this._isCalendarEditorWindow(window)) {
       return null;
     }
+
+    const ownerWindow = window.ownerGlobal || null;
+    if (!ownerWindow || ownerWindow.location?.href != MESSENGER_URL) {
+      return null;
+    }
+
+    const tabInfoList = ownerWindow.tabmail && Array.isArray(ownerWindow.tabmail.tabInfo)
+      ? ownerWindow.tabmail.tabInfo
+      : [];
+    for (const tabInfo of tabInfoList) {
+      if (!this._isCalendarEditorTabInfo(tabInfo)) {
+        continue;
+      }
+      const tabEditorWindow = tabInfo.iframe?.contentWindow || tabInfo.iframe?.contentDocument?.defaultView || null;
+      if (tabEditorWindow == window) {
+        return tabInfo;
+      }
+    }
+
+    return null;
   }
 
   _getManagedTabId(context, window) {
+    const manager = context?.extension?.tabManager;
+    if (!manager || typeof manager.getWrapper != "function" || !window) {
+      console.error("[calendar.items] managed tab id resolution failed: tabManager unavailable");
+      return null;
+    }
+
+    const tabInfo = this._getCalendarTabInfoForEditorWindow(window);
+    if (!tabInfo) {
+      console.error("[calendar.items] managed tab id resolution failed: could not map editor window to tabInfo", {
+        windowHref: window?.location?.href || "",
+      });
+      return null;
+    }
+
     try {
-      if (!window || window.location?.href != MESSENGER_URL) {
-        return null;
-      }
-      const nativeTab = window.tabmail?.currentTabInfo?.nativeTab || null;
-      if (!nativeTab) {
-        return null;
-      }
-      const manager = context?.extension?.tabManager;
-      if (!manager || typeof manager.getWrapper != "function") {
-        return null;
-      }
-      const wrapper = manager.getWrapper(nativeTab);
+      const wrapper = manager.getWrapper(tabInfo);
       const id = wrapper?.id;
-      return typeof id == "number" ? id : null;
+      if (typeof id == "number") {
+        return id;
+      }
+      console.error("[calendar.items] managed tab id resolution failed: tabManager.getWrapper(tabInfo) returned no numeric id", {
+        mode: tabInfo?.mode?.name || "",
+        hasNativeTab: !!tabInfo?.nativeTab,
+      });
+      return null;
     } catch (e) {
-      console.error("[calendar.items] get managed tab id failed", e);
+      console.error("[calendar.items] managed tab id resolution failed: tabManager.getWrapper(tabInfo) threw", {
+        mode: tabInfo?.mode?.name || "",
+        hasNativeTab: !!tabInfo?.nativeTab,
+        error: String(e),
+      });
       return null;
     }
   }
@@ -126,93 +177,135 @@ this.calendar_items = class extends ExtensionAPI {
     }
   }
 
-  _buildEditorRef(context, window) {
-    const editorRef = {};
+  _getEditorOuterId(window) {
+    const outerId = window?.docShell?.outerWindowID ?? window?.windowUtils?.outerWindowID;
+    return typeof outerId == "number" ? outerId : null;
+  }
 
+  _getEditorIdForWindow(context, window) {
+    const bridge = this._getEditorBridge(context.extension);
     const tabId = this._getManagedTabId(context, window);
     if (typeof tabId == "number") {
-      editorRef.tabId = tabId;
-    }
-
-    const windowId = this._getManagedWindowId(context, window);
-    if (typeof windowId == "number") {
-      editorRef.windowId = windowId;
+      const editorOuterId = this._getEditorOuterId(window);
+      if (typeof editorOuterId != "number") {
+        console.error("[calendar.items] editor id resolution failed: missing tab editor outer window id", { tabId });
+        return "";
+      }
+      return bridge.registerTabTarget(tabId, editorOuterId);
     }
 
     const dialogOuterId = this._getDialogOuterId(window);
     if (typeof dialogOuterId == "number") {
-      editorRef.dialogOuterId = dialogOuterId;
+      return bridge.registerDialogTarget(dialogOuterId);
     }
 
-    return Object.keys(editorRef).length ? editorRef : null;
+    return "";
   }
 
-  _resolveEditorWindow(context, editorRef) {
-    const ref = editorRef && typeof editorRef == "object" ? editorRef : {};
-
-    if (typeof ref.dialogOuterId == "number") {
-      if (!Services?.wm?.getOuterWindowWithId) {
-        // continue with other ids
-      } else {
-        try {
-          const win = Services.wm.getOuterWindowWithId(ref.dialogOuterId);
-          if (win && !win.closed) {
-            return win;
-          }
-        } catch (e) {
-          console.error("[calendar.items] resolve dialog window failed", e);
-        }
-      }
+  _resolveTabEditorWindow(context, tabId, editorOuterId = 0) {
+    const tabManager = context?.extension?.tabManager;
+    if (!tabManager || typeof tabManager.get != "function") {
+      console.error("[calendar.items] tab editor resolution failed: tabManager unavailable", { tabId });
+      return null;
     }
 
-    if (typeof ref.tabId == "number") {
-      const tabManager = context?.extension?.tabManager;
-      if (tabManager && typeof tabManager.get == "function") {
-        try {
-          const tabWrapper = tabManager.get(ref.tabId);
-          const nativeTab = tabWrapper?.nativeTab || null;
-          const win = nativeTab?.ownerGlobal || null;
-          if (win && !win.closed) {
-            return win;
-          }
-        } catch (e) {
-          console.error("[calendar.items] resolve tab id failed", e);
-        }
-      }
-    }
-
-    if (typeof ref.windowId == "number") {
-      const manager = context?.extension?.windowManager;
-      if (manager && typeof manager.get == "function") {
-        try {
-          const winObj = manager.get(ref.windowId);
-          const win = winObj?.window || null;
-          if (win && !win.closed) {
-            return win;
-          }
-        } catch (e) {
-          console.error("[calendar.items] resolve window id failed", e);
-        }
-      }
-    }
-
-    return null;
-  }
-
-  _resolveSnapshotWindow(context, editorRef) {
-    const resolved = this._resolveEditorWindow(context, editorRef);
-    if (resolved) {
-      return resolved;
-    }
-
+    let tabWrapper = null;
     try {
-      const browsingContextWindow = context?.browsingContext?.embedderElement?.ownerGlobal || null;
-      if (browsingContextWindow && !browsingContextWindow.closed) {
-        return browsingContextWindow;
-      }
-    } catch (e) {
-      console.error("[calendar.items] resolve browsing context window failed", e);
+      tabWrapper = tabManager.get(tabId);
+    } catch (_e) {
+      console.error("[calendar.items] tab editor resolution failed: tab id not found", { tabId });
+      return null;
     }
+
+    const tabInfo = tabWrapper?.nativeTab || null;
+    if (!this._isCalendarEditorTabInfo(tabInfo)) {
+      console.error("[calendar.items] tab editor resolution failed: tab wrapper nativeTab is not a calendar editor tab", { tabId });
+      return null;
+    }
+
+    const win = tabInfo.iframe?.contentWindow || tabInfo.iframe?.contentDocument?.defaultView || null;
+    if (!win || win.closed || !this._isCalendarEditorWindow(win)) {
+      console.error("[calendar.items] tab editor resolution failed: iframe window unavailable or unexpected URL", {
+        tabId,
+        href: win?.location?.href || "",
+      });
+      return null;
+    }
+
+    if (Number.isInteger(editorOuterId) && editorOuterId > 0) {
+      const currentOuterId = this._getEditorOuterId(win);
+      if (currentOuterId != editorOuterId) {
+        console.error("[calendar.items] tab editor resolution failed: stale tab editor instance", {
+          tabId,
+          expectedOuterId: editorOuterId,
+          currentOuterId: currentOuterId ?? null,
+        });
+        return null;
+      }
+    }
+
+    return win;
+  }
+
+  _resolveEditorWindow(context, editorId) {
+    const bridge = this._getEditorBridge(context.extension);
+    const normalizedEditorId = bridge.normalizeEditorId(editorId);
+    if (!normalizedEditorId) {
+      console.error("[calendar.items] editor resolution failed: invalid editorId format");
+      return null;
+    }
+    const target = bridge.resolveTarget(normalizedEditorId);
+    if (!target) {
+      console.error("[calendar.items] editor resolution failed: unknown editorId", { editorId: normalizedEditorId });
+      return null;
+    }
+
+    if (target.kind == "dialog") {
+      if (!Services?.wm?.getOuterWindowWithId) {
+        console.error("[calendar.items] dialog editor resolution failed: Services.wm.getOuterWindowWithId unavailable", { editorId: normalizedEditorId });
+        bridge.releaseEditorId(normalizedEditorId);
+        return null;
+      }
+      try {
+        const win = Services.wm.getOuterWindowWithId(target.id);
+        if (win && !win.closed && win.location?.href?.startsWith(EVENT_DIALOG_URL)) {
+          return win;
+        }
+      } catch (_e) {
+        console.error("[calendar.items] dialog editor resolution failed: getOuterWindowWithId threw", {
+          editorId: normalizedEditorId,
+          dialogOuterId: target.id,
+        });
+        bridge.releaseEditorId(normalizedEditorId);
+        return null;
+      }
+      console.error("[calendar.items] dialog editor resolution failed: window unavailable or unexpected URL", {
+        editorId: normalizedEditorId,
+        dialogOuterId: target.id,
+      });
+      bridge.releaseEditorId(normalizedEditorId);
+      return null;
+    }
+
+    if (target.kind == "tab") {
+      const win = this._resolveTabEditorWindow(context, target.id, target.instanceId);
+      if (win) {
+        return win;
+      }
+      console.error("[calendar.items] tab editor resolution failed", {
+        editorId: normalizedEditorId,
+        tabId: target.id,
+        editorOuterId: target.instanceId ?? null,
+      });
+      bridge.releaseEditorId(normalizedEditorId);
+      return null;
+    }
+
+    console.error("[calendar.items] editor resolution failed: unsupported target kind", {
+      editorId: normalizedEditorId,
+      kind: target.kind,
+    });
+    bridge.releaseEditorId(normalizedEditorId);
     return null;
   }
 
@@ -221,7 +314,7 @@ this.calendar_items = class extends ExtensionAPI {
       return null;
     }
 
-    if (window.location.href.startsWith(EVENT_DIALOG_URL)) {
+    if (this._isCalendarEditorWindow(window)) {
       const fromWindow = win => {
         if (!win) {
           return null;
@@ -247,36 +340,11 @@ this.calendar_items = class extends ExtensionAPI {
         return direct;
       }
 
-      const panelIframe = window.document?.getElementById?.("calendar-item-panel-iframe") || null;
+      const panelIframe = window.document?.getElementById?.(EVENT_PANEL_IFRAME_ID) || null;
       const panelWin = panelIframe?.contentWindow || panelIframe?.contentDocument?.defaultView || null;
       return fromWindow(panelWin);
     }
 
-    if (window.location.href.startsWith(MESSENGER_URL)) {
-      const tabInfo = window.tabmail?.currentTabInfo || null;
-      if (tabInfo?.mode?.name != "calendarEvent") {
-        return null;
-      }
-      return tabInfo.iframe?.contentWindow?.calendarItem || null;
-    }
-
-    return null;
-  }
-
-  _getLifecycleTargetWindow(window) {
-    if (!window || !window.location) {
-      return null;
-    }
-    if (window.location.href.startsWith(EVENT_DIALOG_URL)) {
-      return window;
-    }
-    if (window.location.href.startsWith(MESSENGER_URL)) {
-      const tabInfo = window.tabmail?.currentTabInfo || null;
-      if (tabInfo?.mode?.name != "calendarEvent") {
-        return null;
-      }
-      return tabInfo.iframe?.contentWindow || tabInfo.iframe?.contentDocument?.defaultView || null;
-    }
     return null;
   }
 
@@ -291,6 +359,9 @@ this.calendar_items = class extends ExtensionAPI {
       return;
     }
     stateMap.delete(target);
+    if (state.editorId && state.extension) {
+      this._getEditorBridge(state.extension).releaseEditorId(state.editorId);
+    }
 
     const cleanup = Array.isArray(state.cleanup) ? state.cleanup : [];
     while (cleanup.length) {
@@ -320,7 +391,7 @@ this.calendar_items = class extends ExtensionAPI {
     const tabmail = window.tabmail;
     const tabInfoList = tabmail && Array.isArray(tabmail.tabInfo) ? tabmail.tabInfo : [];
     for (const tabInfo of tabInfoList) {
-      if (tabInfo?.mode?.name != "calendarEvent") {
+      if (!this._isCalendarEditorTabInfo(tabInfo)) {
         continue;
       }
       const target = tabInfo.iframe?.contentWindow || tabInfo.iframe?.contentDocument?.defaultView || null;
@@ -328,22 +399,30 @@ this.calendar_items = class extends ExtensionAPI {
     }
   }
 
-  _ensureLifecycleWatch(context, window) {
-    const target = this._getLifecycleTargetWindow(window);
+  _ensureLifecycleWatch(context, window, editorId = "") {
+    const target = window && this._isCalendarEditorWindow(window) ? window : null;
     if (!target) {
       return;
     }
 
     const stateMap = this._ensureLifecycleStateMap();
-    const nextEditorRef = this._buildEditorRef(context, window);
-    const nextEditorKey = this._makeEditorKey(nextEditorRef);
+    const bridge = this._getEditorBridge(context.extension);
+    const normalizedEditorId = bridge.normalizeEditorId(editorId);
+    const nextEditorId = normalizedEditorId || this._getEditorIdForWindow(context, target);
+    if (!nextEditorId) {
+      return;
+    }
+    const nextEditorKey = nextEditorId;
+    if (!nextEditorKey) {
+      return;
+    }
     const previous = stateMap.get(target);
     if (previous) {
       if (previous.editorKey == nextEditorKey) {
         return;
       }
       this._emitEditorClosed({
-        editorRef: previous.editorRef || {},
+        editorId: previous.editorId || "",
         action: "superseded",
         reason: "re-bound"
       });
@@ -351,7 +430,8 @@ this.calendar_items = class extends ExtensionAPI {
     }
 
     const state = {
-      editorRef: nextEditorRef || {},
+      extension: context.extension,
+      editorId: nextEditorId,
       editorKey: nextEditorKey,
       cleanup: [],
       closed: false
@@ -363,11 +443,14 @@ this.calendar_items = class extends ExtensionAPI {
         return;
       }
       state.closed = true;
-      this._emitEditorClosed({
-        editorRef: state.editorRef || {},
+      const info = {
+        editorId: state.editorId || "",
         action,
-        reason: reason || ""
-      });
+      };
+      if (reason) {
+        info.reason = reason;
+      }
+      this._emitEditorClosed(info);
       this._cleanupLifecycleState(target);
     };
 
@@ -389,120 +472,209 @@ this.calendar_items = class extends ExtensionAPI {
     addListener("unload", () => emitOnce("discarded", "unload"), true);
   }
 
-  _collectEventDocs(window) {
+  _assertEditorWindowOpen(window, operation) {
+    if (!window || window.closed) {
+      console.error("[calendar.items] editor window closed", { operation: operation || "" });
+      throw new ExtensionError(`Editor window closed during ${operation}`);
+    }
+  }
+
+  _getMainEditorDocument(window) {
+    const doc = window?.document || null;
+    if (!doc) {
+      throw new ExtensionError("Could not resolve editor document");
+    }
+    return doc;
+  }
+
+  _getPanelEditorDocument(window) {
+    const mainDoc = this._getMainEditorDocument(window);
+    const panelIframe = mainDoc.getElementById(EVENT_PANEL_IFRAME_ID);
+    return panelIframe?.contentDocument || null;
+  }
+
+  _getEditorDocuments(window) {
     const docs = [];
-    const pushDoc = doc => {
-      if (!doc || docs.includes(doc)) {
-        return;
-      }
-      docs.push(doc);
-    };
-
-    pushDoc(window?.document || null);
-
-    if (window?.location?.href?.startsWith(EVENT_DIALOG_URL)) {
-      const iframe = window.document?.getElementById?.("calendar-item-panel-iframe") || null;
-      pushDoc(iframe?.contentDocument || null);
+    const mainDoc = this._getMainEditorDocument(window);
+    docs.push(mainDoc);
+    const panelDoc = this._getPanelEditorDocument(window);
+    if (panelDoc) {
+      docs.push(panelDoc);
     }
-
-    if (window?.location?.href?.startsWith(MESSENGER_URL)) {
-      const tabInfo = window.tabmail?.currentTabInfo || null;
-      if (tabInfo?.mode?.name == "calendarEvent") {
-        pushDoc(tabInfo.iframe?.contentDocument || null);
-      }
-    }
-
     return docs;
   }
 
-  _findField(docs, selectors) {
+  _resolveValueFieldById(window, elementId, label) {
+    const docs = this._getEditorDocuments(window);
     for (const doc of docs) {
-      if (!doc || typeof doc.querySelector != "function") {
-        continue;
-      }
-      for (const selector of selectors) {
-        const element = doc.querySelector(selector);
-        if (element) {
-          return element;
-        }
+      const field = doc.getElementById(elementId);
+      if (field && ("value" in field)) {
+        return {
+          kind: "value",
+          element: field,
+        };
       }
     }
-    return null;
+    console.error("[calendar.items] field resolution failed", { field: label, elementId });
+    throw new ExtensionError(`Could not resolve writable ${label} field`);
   }
 
-  _findDescriptionFieldInDocs(docs) {
+  _resolveTitleField(window) {
+    return this._resolveValueFieldById(window, EVENT_TITLE_FIELD_ID, "title");
+  }
+
+  _resolveLocationField(window) {
+    return this._resolveValueFieldById(window, EVENT_LOCATION_FIELD_ID, "location");
+  }
+
+  _resolveDescriptionField(window) {
+    const docs = this._getEditorDocuments(window);
     for (const doc of docs) {
-      const host = doc?.querySelector?.("editor#item-description") || null;
-      if (host) {
-        const target = host.inputField || host.contentDocument?.body || host;
-        if (target) {
-          return target;
-        }
+      const host = doc.getElementById(EVENT_DESCRIPTION_FIELD_ID);
+      const inputField = host?.inputField || null;
+      if (inputField && ("value" in inputField)) {
+        return {
+          kind: "value",
+          element: inputField,
+        };
       }
-      const fallback = doc?.querySelector?.("textarea#item-description") || null;
-      if (fallback) {
-        return fallback;
+
+      if (host && ("value" in host)) {
+        return {
+          kind: "value",
+          element: host,
+        };
+      }
+
+      const htmlBody = host?.contentDocument?.body || null;
+      if (htmlBody) {
+        return {
+          kind: "html-body",
+          element: htmlBody,
+        };
       }
     }
-    return null;
+    console.error("[calendar.items] field resolution failed", { field: "description", elementId: EVENT_DESCRIPTION_FIELD_ID });
+    throw new ExtensionError("Could not resolve writable description field");
   }
 
-  _dispatchInputEvent(field) {
-    if (!field) {
+  _dispatchInputEvent(element) {
+    if (!element) {
       return;
     }
-    const doc = field.ownerDocument || field.document;
+    const doc = element.ownerDocument || element.document;
     const win = doc?.defaultView;
     if (win) {
-      field.dispatchEvent(new win.Event("input", { bubbles: true }));
+      element.dispatchEvent(new win.Event("input", { bubbles: true }));
     }
   }
 
-  _setFieldValue(field, value, opts = {}) {
-    if (!field) {
+  _setFieldValue(target, value) {
+    const element = target?.element || null;
+    if (!element) {
+      console.error("[calendar.items] field update failed: missing resolved field target");
+      throw new ExtensionError("Resolved editor field is not writable");
+    }
+
+    if (target.kind == "value") {
+      if (!("value" in element)) {
+        console.error("[calendar.items] field update failed: resolved value target has no value property");
+        throw new ExtensionError("Resolved editor field is not writable");
+      }
+
+      element.focus?.();
+      element.value = value;
+      this._dispatchInputEvent(element);
       return;
     }
 
-    const doc = field.ownerDocument || field.document || field.contentDocument || null;
-    const preferExec = opts.preferExec === true;
-    const tryExecCommand = () => {
+    if (target.kind == "html-body") {
+      const doc = element.ownerDocument || null;
       if (!doc || typeof doc.execCommand != "function") {
-        return false;
+        console.error("[calendar.items] description update failed: execCommand unavailable on html-body editor");
+        throw new ExtensionError("Could not write description field");
       }
-      field.focus?.();
+      element.focus?.();
       doc.execCommand("selectAll", false, null);
-      doc.execCommand("insertText", false, value);
-      return true;
+      const insertOk = doc.execCommand("insertText", false, value);
+      const normalizedValue = String(value ?? "");
+      const currentValue = String(element.textContent ?? "");
+      if (!insertOk && currentValue != normalizedValue) {
+        console.error("[calendar.items] description update failed: execCommand returned false");
+        throw new ExtensionError("Could not write description field");
+      }
+      this._dispatchInputEvent(element);
+      return;
+    }
+
+    console.error("[calendar.items] field update failed: unknown resolved field target kind", {
+      kind: target.kind,
+    });
+    throw new ExtensionError("Resolved editor field is not writable");
+  }
+
+  _snapshotResolvedFieldValues(targets) {
+    const readValue = target => {
+      if (!target || !target.element) {
+        return null;
+      }
+      if (target.kind == "value") {
+        return String(target.element.value ?? "");
+      }
+      if (target.kind == "html-body") {
+        return String(target.element.textContent ?? "");
+      }
+      console.error("[calendar.items] field snapshot failed: unknown resolved field target kind", {
+        kind: target.kind,
+      });
+      throw new ExtensionError("Resolved editor field is not readable");
     };
 
-    if (preferExec && tryExecCommand()) {
-      this._dispatchInputEvent(field);
+    return {
+      title: readValue(targets.title),
+      location: readValue(targets.location),
+      description: readValue(targets.description),
+    };
+  }
+
+  _rollbackFieldUpdates(window, targets, beforeValues, applied) {
+    if (!window || window.closed) {
+      console.error("[calendar.items] rollback skipped because editor window closed");
       return;
     }
 
-    if ("value" in field) {
-      field.focus?.();
-      field.value = value;
-      this._dispatchInputEvent(field);
-      return;
-    }
-
-    if ((field.isContentEditable || field.tagName?.toLowerCase?.() == "body") && tryExecCommand()) {
-      this._dispatchInputEvent(field);
-      return;
-    }
-
-    if (field.textContent !== undefined) {
-      field.textContent = value;
-      this._dispatchInputEvent(field);
+    const rollbackOrder = ["description", "location", "title"];
+    for (const key of rollbackOrder) {
+      if (!applied[key] || !targets[key]) {
+        continue;
+      }
+      this._setFieldValue(targets[key], beforeValues[key] ?? "");
     }
   }
 
-  _applyFieldUpdates(window, fields) {
-    const docs = this._collectEventDocs(window);
-    const titleField = this._findField(docs, ["#item-title"]);
-    const locationField = this._findField(docs, ["#item-location"]);
-    const descField = this._findDescriptionFieldInDocs(docs);
+  _resolveRequestedFieldTargets(window, fields) {
+    this._assertEditorWindowOpen(window, "field target resolution");
+    const targets = {};
+
+    if (typeof fields.title == "string") {
+      targets.title = this._resolveTitleField(window);
+    }
+
+    if (typeof fields.location == "string") {
+      targets.location = this._resolveLocationField(window);
+    }
+
+    if (typeof fields.description == "string") {
+      targets.description = this._resolveDescriptionField(window);
+    }
+
+    return targets;
+  }
+
+  _applyFieldUpdates(window, fields, state = null) {
+    this._assertEditorWindowOpen(window, "field updates");
+    const targets = state?.targets || this._resolveRequestedFieldTargets(window, fields);
+    const beforeValues = state?.beforeValues || this._snapshotResolvedFieldValues(targets);
 
     const applied = {
       title: false,
@@ -510,35 +682,98 @@ this.calendar_items = class extends ExtensionAPI {
       description: false
     };
 
-    if (typeof fields.title == "string" && titleField) {
-      this._setFieldValue(titleField, fields.title);
-      applied.title = true;
-    }
-    if (typeof fields.location == "string" && locationField) {
-      this._setFieldValue(locationField, fields.location);
-      applied.location = true;
-    }
-    if (typeof fields.description == "string" && descField) {
-      this._setFieldValue(descField, fields.description, { preferExec: true });
-      applied.description = true;
+    try {
+      if (typeof fields.title == "string") {
+        this._assertEditorWindowOpen(window, "title update");
+        this._setFieldValue(targets.title, fields.title);
+        applied.title = true;
+      }
+      if (typeof fields.location == "string") {
+        this._assertEditorWindowOpen(window, "location update");
+        this._setFieldValue(targets.location, fields.location);
+        applied.location = true;
+      }
+      if (typeof fields.description == "string") {
+        this._assertEditorWindowOpen(window, "description update");
+        this._setFieldValue(targets.description, fields.description);
+        applied.description = true;
+      }
+    } catch (e) {
+      try {
+        this._rollbackFieldUpdates(window, targets, beforeValues, applied);
+      } catch (rollbackError) {
+        console.error("[calendar.items] rollback failed", rollbackError);
+      }
+      throw e;
     }
 
     return applied;
   }
 
-  _applyPropertyUpdates(item, properties) {
-    for (const [name, value] of Object.entries(properties || {})) {
-      if (!name) {
-        continue;
+  _validatePropertyUpdates(properties) {
+    for (const name of Object.keys(properties || {})) {
+      if (!name || typeof name != "string") {
+        throw new ExtensionError("Property names must be non-empty strings");
       }
-      if (value == null || value == "") {
-        if (typeof item.deleteProperty == "function") {
-          item.deleteProperty(name);
+    }
+  }
+
+  _snapshotPropertyValues(item, properties) {
+    this._validatePropertyUpdates(properties);
+    const snapshot = {};
+    for (const name of Object.keys(properties || {})) {
+      try {
+        const current = item.getProperty(name);
+        snapshot[name] = current == null ? null : String(current);
+      } catch (e) {
+        console.error("[calendar.items] property snapshot failed", { property: name, error: String(e) });
+        throw new ExtensionError(`Could not snapshot property ${name}`);
+      }
+    }
+    return snapshot;
+  }
+
+  _applyPropertyUpdates(item, properties) {
+    this._validatePropertyUpdates(properties);
+    const appliedNames = [];
+    for (const [name, value] of Object.entries(properties || {})) {
+      try {
+        if (value == null) {
+          if (typeof item.deleteProperty == "function") {
+            item.deleteProperty(name);
+          } else {
+            item.setProperty(name, "");
+          }
         } else {
-          item.setProperty(name, "");
+          item.setProperty(name, String(value));
         }
-      } else {
-        item.setProperty(name, String(value));
+        appliedNames.push(name);
+      } catch (e) {
+        console.error("[calendar.items] property update failed", { property: name, error: String(e) });
+        throw new ExtensionError(`Could not update property ${name}`);
+      }
+    }
+    return appliedNames;
+  }
+
+  _rollbackPropertyUpdates(item, snapshot, appliedNames) {
+    const names = Array.isArray(appliedNames) ? appliedNames : [];
+    for (let i = names.length - 1; i >= 0; i--) {
+      const name = names[i];
+      const previous = Object.prototype.hasOwnProperty.call(snapshot, name) ? snapshot[name] : null;
+      try {
+        if (previous == null) {
+          if (typeof item.deleteProperty == "function") {
+            item.deleteProperty(name);
+          } else {
+            item.setProperty(name, "");
+          }
+        } else {
+          item.setProperty(name, String(previous));
+        }
+      } catch (e) {
+        console.error("[calendar.items] property rollback failed", { property: name, error: String(e) });
+        throw new ExtensionError(`Could not rollback property ${name}`);
       }
     }
   }
@@ -555,6 +790,8 @@ this.calendar_items = class extends ExtensionAPI {
     if (this._editorClosedListeners) {
       this._editorClosedListeners.clear();
     }
+
+    this._clearEditorBridge(this.extension);
   }
 
   getAPI(context) {
@@ -658,7 +895,7 @@ this.calendar_items = class extends ExtensionAPI {
             newItem.calendar = calendar.superCalendar;
 
             if (updateProperties.metadata && isOwnCalendar(calendar, context.extension)) {
-              // TODO merge or replace?
+              // Metadata updates replace the cached payload for deterministic behavior.
               const cache = getCachedCalendar(calendar);
               cache.setMetaData(newItem.id, JSON.stringify(updateProperties.metadata));
             }
@@ -680,8 +917,7 @@ this.calendar_items = class extends ExtensionAPI {
             }
 
             if (isOwnCalendar(toCalendar, context.extension) && isOwnCalendar(fromCalendar, context.extension)) {
-              // TODO doing this first, the item may not be in the db and it will fail. Doing this
-              // after addItem, the metadata will not be available for the onCreated listener
+              // Copy metadata before addItem so onCreated listeners can read it immediately.
               const fromCache = getCachedCalendar(fromCalendar);
               const toCache = getCachedCalendar(toCalendar);
               toCache.setMetaData(item.id, fromCache.getMetaData(item.id));
@@ -700,46 +936,91 @@ this.calendar_items = class extends ExtensionAPI {
           },
 
           async getCurrent(options) {
-            let win = api._resolveSnapshotWindow(context, options?.editorRef);
+            const editorId = api._getEditorBridge(context.extension).normalizeEditorId(options?.editorId);
+            if (!editorId) {
+              console.error("[calendar.items] getCurrent failed: invalid editorId");
+              throw new ExtensionError("editorId must be a non-empty opaque editor identifier");
+            }
+
+            let win = api._resolveEditorWindow(context, editorId);
             if (!win) {
+              console.error("[calendar.items] getCurrent: editor window could not be resolved", { editorId });
               return null;
             }
             let item = api._getEditedItemForWindow(win);
             if (!item) {
+              console.error("[calendar.items] getCurrent: no editable item found in resolved editor window", { editorId });
               return null;
             }
-            api._ensureLifecycleWatch(context, win);
+            api._ensureLifecycleWatch(context, win, editorId);
             const converted = convertItem(item, options, context.extension);
             if (converted) {
-              const editorRef = api._buildEditorRef(context, win);
-              if (editorRef) {
-                converted.editorRef = editorRef;
-              }
+              converted.editorId = editorId;
             }
             return converted;
           },
 
           async updateCurrent(updateOptions) {
-            let win = api._resolveSnapshotWindow(context, updateOptions?.editorRef);
+            const editorId = api._getEditorBridge(context.extension).normalizeEditorId(updateOptions?.editorId);
+            if (!editorId) {
+              console.error("[calendar.items] updateCurrent failed: invalid editorId");
+              throw new ExtensionError("editorId must be a non-empty opaque editor identifier");
+            }
+
+            let win = api._resolveEditorWindow(context, editorId);
             if (!win) {
+              console.error("[calendar.items] updateCurrent failed: editor window could not be resolved", { editorId });
               throw new ExtensionError("Could not resolve target editor window");
             }
             let item = api._getEditedItemForWindow(win);
             if (!item) {
+              console.error("[calendar.items] updateCurrent failed: no editable item found in resolved editor window", { editorId });
               throw new ExtensionError("Could not find current editor item");
             }
-            api._ensureLifecycleWatch(context, win);
+            api._ensureLifecycleWatch(context, win, editorId);
 
             const fields = updateOptions?.fields && typeof updateOptions.fields == "object" ? updateOptions.fields : {};
             const properties = updateOptions?.properties && typeof updateOptions.properties == "object" ? updateOptions.properties : {};
-            api._applyFieldUpdates(win, fields);
-            api._applyPropertyUpdates(item, properties);
+            if (!Object.keys(fields).length && !Object.keys(properties).length) {
+              console.error("[calendar.items] updateCurrent failed: neither fields nor properties provided", { editorId });
+              throw new ExtensionError("updateCurrent requires at least one field or property update");
+            }
+
+            const fieldTargets = api._resolveRequestedFieldTargets(win, fields);
+            const fieldBeforeValues = api._snapshotResolvedFieldValues(fieldTargets);
+            let fieldApplied = {
+              title: false,
+              location: false,
+              description: false
+            };
+            api._assertEditorWindowOpen(win, "field updates");
+            fieldApplied = api._applyFieldUpdates(win, fields, {
+              targets: fieldTargets,
+              beforeValues: fieldBeforeValues,
+            });
+
+            api._assertEditorWindowOpen(win, "property updates");
+            const propertySnapshot = api._snapshotPropertyValues(item, properties);
+            let appliedProperties = [];
+            try {
+              appliedProperties = api._applyPropertyUpdates(item, properties);
+            } catch (propertyError) {
+              try {
+                api._rollbackPropertyUpdates(item, propertySnapshot, appliedProperties);
+              } catch (propertyRollbackError) {
+                console.error("[calendar.items] property rollback failed", propertyRollbackError);
+              }
+              try {
+                api._rollbackFieldUpdates(win, fieldTargets, fieldBeforeValues, fieldApplied);
+              } catch (fieldRollbackError) {
+                console.error("[calendar.items] field rollback after property failure failed", fieldRollbackError);
+              }
+              throw propertyError;
+            }
+
             const converted = convertItem(item, updateOptions, context.extension);
             if (converted) {
-              const editorRef = api._buildEditorRef(context, win);
-              if (editorRef) {
-                converted.editorRef = editorRef;
-              }
+              converted.editorId = editorId;
             }
             return converted;
           },
@@ -767,8 +1048,8 @@ this.calendar_items = class extends ExtensionAPI {
             register: (fire, options) => {
               const observer = cal.createAdapter(Ci.calIObserver, {
                 onModifyItem: (newItem, _oldItem) => {
-                  // TODO calculate changeInfo
-                  const changeInfo = {};
+                  // changeInfo currently signals a full item replacement.
+                  const changeInfo = { changeType: "full" };
                   fire.sync(convertItem(newItem, options, context.extension), changeInfo);
                 },
               });
@@ -822,9 +1103,9 @@ this.calendar_items = class extends ExtensionAPI {
             },
           }).api(),
 
-          onEditorClosed: new EventManager({
+          onTrackedEditorClosed: new EventManager({
             context,
-            name: "calendar.items.onEditorClosed",
+            name: "calendar.items.onTrackedEditorClosed",
             register: fire => {
               const listener = info => {
                 fire.sync(info);
