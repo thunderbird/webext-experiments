@@ -5,7 +5,7 @@
       {
         "id": "CalendarItem",
         "type": "object",
-        "description": "TODO split event/task. Add more jscalendar props. Use format: 'date'.",
+        "description": "Calendar item envelope used by this API. `item` contains the payload in the selected return format.",
         "properties": {
           "id": { "type": "string" },
           "calendarId": { "type": "string" },
@@ -13,6 +13,7 @@
           "instance": { "type": "string", "optional": true },
           "format": { "$ref": "CalendarItemFormats", "optional": true },
           "item": { "$ref": "RawCalendarItem" },
+          "editorId": { "$ref": "EditorId", "optional": true },
           "metadata": { "type": "object", "additionalProperties": { "type": "any" }, "optional": true }
         }
       },
@@ -35,13 +36,74 @@
       {
         "id": "CalendarItemAlarm",
         "type": "object",
-        "description": "TODO needs real structure",
+        "description": "Alarm payload emitted by onAlarm for the associated calendar item.",
         "properties": {
           "itemId": { "type": "string" },
           "action": { "type": "string" },
           "date": { "type": "string" },
           "offset": { "type": "string" },
           "related": { "type": "string", "enum": ["absolute", "start", "end"] }
+        }
+      },
+      {
+        "id": "EditorId",
+        "type": "string",
+        "description": "Opaque identifier for one specific open editor instance. Do not parse. Valid only while that exact editor instance remains open in the current Thunderbird session.",
+        "pattern": "^ed-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      {
+        "id": "EditorFieldUpdates",
+        "type": "object",
+        "description": "UI field updates in the open editor. Uses dedicated field identifiers: title (`item-title`), location (`item-location`), description (`item-description`).",
+        "properties": {
+          "title": { "type": "string", "optional": true },
+          "location": { "type": "string", "optional": true },
+          "description": { "type": "string", "optional": true }
+        }
+      },
+      {
+        "id": "EditorPropertyUpdates",
+        "type": "object",
+        "description": "Calendar item property updates. A string value sets/replaces a property value. A null value removes the property.",
+        "additionalProperties": {
+          "choices": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      },
+      {
+        "id": "EditorClosedAction",
+        "type": "string",
+        "description": "persisted: emitted for dialogaccept or dialogextra1. discarded: emitted for dialogcancel, dialogextra2, or unload. superseded: tracked editorId was replaced by a new editorId for the same UI target.",
+        "enum": ["persisted", "discarded", "superseded"]
+      },
+      {
+        "id": "EditorClosedReason",
+        "type": "string",
+        "description": "Underlying UI signal that produced the close action.",
+        "enum": ["dialogaccept", "dialogextra1", "dialogcancel", "dialogextra2", "unload", "re-bound"]
+      },
+      {
+        "id": "EditorClosedInfo",
+        "type": "object",
+        "description": "Lifecycle payload for one tracked editorId emitted by onTrackedEditorClosed.",
+        "properties": {
+          "editorId": { "$ref": "EditorId" },
+          "action": { "$ref": "EditorClosedAction" },
+          "reason": { "$ref": "EditorClosedReason", "optional": true }
+        }
+      },
+      {
+        "id": "ItemChangeInfo",
+        "type": "object",
+        "description": "Change metadata for onUpdated. Currently `changeType` is always `full`.",
+        "properties": {
+          "changeType": {
+            "type": "string",
+            "enum": ["full"],
+            "optional": true
+          }
         }
       }
     ],
@@ -151,12 +213,31 @@
         "name": "getCurrent",
         "async": true,
         "type": "function",
+        "description": "Get the current item for the editor identified by editorId. Returns null if that editor is no longer open or if no editable item can be resolved in that editor.",
         "parameters": [
           {
             "type": "object",
             "name": "getOptions",
-            "optional": true,
             "properties": {
+              "returnFormat": { "$ref": "ReturnFormat", "optional": true },
+              "editorId": { "$ref": "EditorId" }
+            }
+          }
+        ]
+      },
+      {
+        "name": "updateCurrent",
+        "async": true,
+        "type": "function",
+        "description": "Update the current item for the editor identified by editorId. Requires at least one update via fields or properties. All requested UI fields are resolved before writing starts. The operation is transactional across fields and properties: if a field write fails, field changes are rolled back; if a property write fails, applied properties are rolled back and previously applied field changes are rolled back as well. Throws if the editor cannot be resolved or if any requested field target is unavailable.",
+        "parameters": [
+          {
+            "type": "object",
+            "name": "updateOptions",
+            "properties": {
+              "editorId": { "$ref": "EditorId" },
+              "fields": { "$ref": "EditorFieldUpdates", "optional": true },
+              "properties": { "$ref": "EditorPropertyUpdates", "optional": true },
               "returnFormat": { "$ref": "ReturnFormat", "optional": true }
             }
           }
@@ -185,7 +266,7 @@
         "type": "function",
         "parameters": [
           { "name": "item", "$ref": "CalendarItem" },
-          { "name": "changeInfo", "type": "object", "properties": {}, "description": "TODO needs properties" }
+          { "name": "changeInfo", "$ref": "ItemChangeInfo" }
         ],
         "extraParameters": [
           {
@@ -220,6 +301,14 @@
               "returnFormat": { "$ref": "ReturnFormat", "optional": true }
             }
           }
+        ]
+      },
+      {
+        "name": "onTrackedEditorClosed",
+        "type": "function",
+        "description": "Fired for tracked editors only, after getCurrent() or updateCurrent() has been called for that editorId. Emitted once per tracked editorId. action reflects the exact close signal defined by EditorClosedAction and reason. No ordering guarantee relative to onCreated/onUpdated/onRemoved.",
+        "parameters": [
+          { "name": "info", "$ref": "EditorClosedInfo" }
         ]
       }
     ]

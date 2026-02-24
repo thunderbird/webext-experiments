@@ -99,6 +99,12 @@
         }
       },
       {
+        "id": "EditorId",
+        "type": "string",
+        "description": "Opaque identifier for one specific open editor instance. Do not parse. Valid only while that exact editor instance remains open in the current Thunderbird session.",
+        "pattern": "^ed-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      {
         "id": "OnClickData",
         "type": "object",
         "description": "Information sent when a browser action is clicked.",
@@ -115,6 +121,17 @@
             "type": "integer",
             "optional": true,
             "description": "An integer value of button by which menu item was clicked."
+          },
+          "editorId": {
+            "$ref": "EditorId",
+            "optional": true,
+            "description": "Opaque identifier of the concrete editor context where the action was invoked."
+          },
+          "editorType": {
+            "type": "string",
+            "enum": ["dialog", "tab"],
+            "optional": true,
+            "description": "Editor variant where the action was invoked."
           }
         }
       }
@@ -651,4 +668,3 @@
     ]
   }
 ]
-
