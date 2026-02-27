@@ -57,6 +57,8 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
     // deal with ids per window url.
     if (
       this.extension.startupReason == "ADDON_INSTALL" ||
+      // NOTE: ADDON_UPGRADE is a temporary legacy-migration path for existing add-on
+      // profiles. Remove this behavior is in Thunderbird core
       this.extension.startupReason == "ADDON_UPGRADE"
     ) {
       // Ensure both editor variants have the button in persisted toolbar sets
