@@ -2,6 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+/* global ExtensionCommon */
+
 var { ExtensionParent } = ChromeUtils.importESModule("resource://gre/modules/ExtensionParent.sys.mjs");
 var { ExtensionSupport } = ChromeUtils.importESModule("resource:///modules/ExtensionSupport.sys.mjs");
 var { ToolbarButtonAPI } = ChromeUtils.importESModule("resource:///modules/ExtensionToolbarButtons.sys.mjs");
@@ -137,7 +139,7 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
     if (document.getElementById(this.id)) {
       return;
     }
-    
+
     const windowURL = window.location.href;
     const toolboxData = this.toolboxData.find(t => t.windowUrl == windowURL);
 
@@ -233,7 +235,6 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
     if (this.extension.hasPermission("menus")) {
       document.addEventListener("popupshowing", this);
     }
-
   }
 
   unpaint(window) {
