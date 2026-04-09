@@ -7,6 +7,29 @@ var { ExtensionUtils: { ExtensionError } } = ChromeUtils.importESModule("resourc
 
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
+/**
+ * Thunderbird 149 no longer exposes cal.createAdapter(). Build explicit
+ * calIObserver objects so the vendored calendar experiment keeps working on
+ * newer release channels as well as ESR.
+ *
+ * @param {object} methods
+ * @returns {object}
+ */
+function createCalendarObserver(methods = {}) {
+  return Object.assign({
+    QueryInterface: ChromeUtils.generateQI(["calIObserver"]),
+    onStartBatch() {},
+    onEndBatch() {},
+    onLoad() {},
+    onAddItem() {},
+    onModifyItem() {},
+    onDeleteItem() {},
+    onError() {},
+    onPropertyChanged() {},
+    onPropertyDeleting() {},
+  }, methods);
+}
+
 this.calendar_items = class extends ExtensionAPI {
   getAPI(context) {
     const uuid = context.extension.uuid;
@@ -164,7 +187,7 @@ this.calendar_items = class extends ExtensionAPI {
             context,
             name: "calendar.items.onCreated",
             register: (fire, options) => {
-              const observer = cal.createAdapter(Ci.calIObserver, {
+              const observer = createCalendarObserver({
                 onAddItem: item => {
                   fire.sync(convertItem(item, options, context.extension));
                 },
@@ -181,7 +204,7 @@ this.calendar_items = class extends ExtensionAPI {
             context,
             name: "calendar.items.onUpdated",
             register: (fire, options) => {
-              const observer = cal.createAdapter(Ci.calIObserver, {
+              const observer = createCalendarObserver({
                 onModifyItem: (newItem, _oldItem) => {
                   // TODO calculate changeInfo
                   const changeInfo = {};
@@ -200,7 +223,7 @@ this.calendar_items = class extends ExtensionAPI {
             context,
             name: "calendar.items.onRemoved",
             register: fire => {
-              const observer = cal.createAdapter(Ci.calIObserver, {
+              const observer = createCalendarObserver({
                 onDeleteItem: item => {
                   fire.sync(item.calendar.id, item.id);
                 },
