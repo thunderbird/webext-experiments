@@ -8,12 +8,12 @@ var { ExtensionUtils: { ExtensionError } } = ChromeUtils.importESModule("resourc
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
 /**
- * Thunderbird 149 no longer exposes cal.createAdapter(). Build explicit
+ * Thunderbird >=148 no longer exposes cal.createAdapter(). Build explicit
  * calIObserver objects so the vendored calendar experiment keeps working on
  * newer release channels as well as ESR.
  *
  * @param {object} methods
- * @returns {object}
+ * @returns {calIObserver}
  */
 function createCalendarObserver(methods = {}) {
   return Object.assign({
