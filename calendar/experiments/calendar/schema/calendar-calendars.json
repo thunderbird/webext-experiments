@@ -16,7 +16,8 @@
           "visible": { "type": "boolean" },
           "showReminders": { "type": "boolean" },
           "color": { "type": "string", "optional": true },
-          "capabilities": { "$ref": "CalendarCapabilities", "optional": true }
+          "capabilities": { "$ref": "CalendarCapabilities", "optional": true },
+          "username": { "type": "string", "optional": true }
         }
       },
       {
@@ -29,7 +30,8 @@
           "enabled": { "type": "boolean" },
           "visible": { "type": "boolean" },
           "showReminders": { "type": "boolean" },
-          "color": { "type": "string", "optional": true }
+          "color": { "type": "string", "optional": true },
+          "username": { "type": "string", "optional": true }
         }
       },
       {
@@ -115,7 +117,8 @@
               "color": { "type": "string", "optional": true },
               "readOnly": { "type": "boolean", "optional": true },
               "visible": { "type": "boolean", "optional": true },
-              "enabled": { "type": "boolean", "optional": true }
+              "enabled": { "type": "boolean", "optional": true },
+              "username": { "type": "string", "optional": true }
             }
           }
         ]
@@ -150,7 +153,8 @@
                 "optional": true,
                 "additionalProperties": true,
                 "description": "This is normally CalendarCapabilities, but we don't want to inherit default values here"
-              }
+              },
+              "username": { "type": "string", "optional": true }
             }
           }
         ]
@@ -171,6 +175,7 @@
               "enabled": { "type": "boolean", "optional": true },
               "color": { "type": "string", "optional": true },
               "lastError": { "type": "string", "optional": true },
+              "username": { "type": "string", "optional": true },
               "capabilities": {
                 "type": "object",
                 "optional": true,
