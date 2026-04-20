@@ -25,7 +25,7 @@ this.calendar_calendars = class extends ExtensionAPI {
     return {
       calendar: {
         calendars: {
-          async query({ type, url, name, color, readOnly, enabled, visible }) {
+          async query({ type, url, name, color, readOnly, enabled, visible, username }) {
             const calendars = cal.manager.getCalendars();
 
             let pattern = null;
@@ -70,6 +70,10 @@ this.calendar_calendars = class extends ExtensionAPI {
                   matches = false;
                 }
 
+                if (username && username != calendar.getProperty("username")) {
+                  matches = false;
+                }
+
                 return matches;
               })
               .map(calendar => convertCalendar(context.extension, calendar));
@@ -108,6 +112,9 @@ this.calendar_calendars = class extends ExtensionAPI {
             }
             if (createProperties.showReminders != null) {
               calendar.setProperty("suppressAlarms", !createProperties.showReminders);
+            }
+            if (createProperties.username != null) {
+              calendar.setProperty("username", createProperties.username);
             }
             if (createProperties.capabilities != null) {
               if (!isOwnCalendar(calendar, context.extension)) {
@@ -151,7 +158,7 @@ this.calendar_calendars = class extends ExtensionAPI {
               calendar.setProperty("suppressAlarms", !updateProperties.showReminders);
             }
 
-            for (const prop of ["readOnly", "name", "color"]) {
+            for (const prop of ["readOnly", "name", "color", "username"]) {
               if (updateProperties[prop] != null) {
                 calendar.setProperty(prop, updateProperties[prop]);
               }
