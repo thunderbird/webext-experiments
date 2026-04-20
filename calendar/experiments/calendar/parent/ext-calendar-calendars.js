@@ -7,35 +7,13 @@ var { ExtensionUtils: { ExtensionError } } = ChromeUtils.importESModule("resourc
 
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
 
-/**
- * Thunderbird >=148 no longer exposes cal.createAdapter(). Build explicit
- * calIObserver objects so the vendored calendar experiment keeps working on
- * newer release channels as well as ESR.
- *
- * @param {object} methods
- * @returns {calIObserver}
- */
-function createCalendarObserver(methods = {}) {
-  return Object.assign({
-    QueryInterface: ChromeUtils.generateQI(["calIObserver"]),
-    onStartBatch() {},
-    onEndBatch() {},
-    onLoad() {},
-    onAddItem() {},
-    onModifyItem() {},
-    onDeleteItem() {},
-    onError() {},
-    onPropertyChanged() {},
-    onPropertyDeleting() {},
-  }, methods);
-}
-
 this.calendar_calendars = class extends ExtensionAPI {
   getAPI(context) {
     const uuid = context.extension.uuid;
     const root = `experiments-calendar-${uuid}`;
     const query = context.extension.manifest.version;
     const {
+      createCalendarObserver,
       unwrapCalendar,
       getResolvedCalendarById,
       isOwnCalendar,
