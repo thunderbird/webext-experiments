@@ -41,7 +41,10 @@ this.calendarItemAction = class extends ToolbarButtonAPI {
       const localize = this.extension.localize.bind(this.extension);
 
       if (calendarItemAction.default_popup) {
-        calendarItemAction.default_popup = this.extension.getURL(localize(calendarItemAction.default_popup));
+        const popupUrl = localize(calendarItemAction.default_popup);
+        calendarItemAction.default_popup = /^[a-z][a-z0-9+.-]*:/i.test(popupUrl)
+          ? popupUrl
+          : this.extension.getURL(popupUrl);
       }
       if (calendarItemAction.default_label) {
         calendarItemAction.default_label = localize(calendarItemAction.default_label);
