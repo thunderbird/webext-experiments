@@ -20,6 +20,7 @@ The following WebExtension Experiments are available in this repository.
 | ------------------------------------- | ------------------------------------------- | --------------
 | [calendar](./calendar/)               | [@kewisch](https://github.com/kewisch/)     | Draft for calendar-related APIs in Thunderbird
 | [NotificationBox](./NotificationBox/) | [@jobisoft](https://github.com/jobisoft/)   | Draft for an API to show notifications inside Thunderbird
+| [accountOrder](./accountOrder/) | [@big-bay](https://github.com/big-bay/) | Draft for reading and persisting mail account order
 
 
 Contributions Welcome!
