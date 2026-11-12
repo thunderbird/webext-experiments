@@ -1,0 +1,26 @@
+{
+  "manifest_version": 2,
+  "name": "Account Order API example",
+  "version": "0.1",
+  "description": "Read-only example for the accountOrder experiment. Reordering is explicit.",
+  "author": "CSWerk",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "account-order-example@thunderbird.api.development",
+      "strict_min_version": "160.0",
+      "strict_max_version": "160.*"
+    }
+  },
+  "permissions": ["accountsRead"],
+  "background": {"scripts": ["background.js"]},
+  "experiment_apis": {
+    "accountOrder": {
+      "schema": "experiments/accountOrder/schema/account-order.json",
+      "parent": {
+        "scopes": ["addon_parent"],
+        "paths": [["accountOrder"]],
+        "script": "experiments/accountOrder/parent/ext-account-order.js"
+      }
+    }
+  }
+}

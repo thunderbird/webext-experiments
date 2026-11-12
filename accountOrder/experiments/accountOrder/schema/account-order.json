@@ -1,0 +1,34 @@
+[
+  {
+    "namespace": "accountOrder",
+    "description": "Read and change the order of existing mail accounts without changing the default account.",
+    "permissions": ["accountsRead"],
+    "functions": [
+      {
+        "name": "getOrder",
+        "type": "function",
+        "async": true,
+        "description": "Return IDs in the same order and with the same account types as accounts.list(false). Hidden and non-mail accounts are excluded.",
+        "parameters": [],
+        "returns": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      {
+        "name": "setOrder",
+        "type": "function",
+        "async": true,
+        "description": "Persist a complete permutation of the current mail account IDs. Invalid or stale membership rejects before mutation. Non-mail and hidden accounts are preserved; the default account is unchanged. Read getOrder again after an error.",
+        "parameters": [
+          {
+            "name": "accountIds",
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Every ID returned by a fresh getOrder call, exactly once, in the desired order."
+          }
+        ]
+      }
+    ]
+  }
+]
