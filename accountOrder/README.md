@@ -3,8 +3,8 @@
 | Item | Value |
 | --- | --- |
 | Description | Read and persist the order of existing mail accounts |
-| Status | Draft proposal; not yet published by this repository |
-| Compatibility | Designed for Thunderbird 160; see validation below |
+| Status | Draft |
+| Compatibility | Thunderbird 160.0 on Windows; see validation below |
 | Tracking | [issue #73](https://github.com/thunderbird/webext-experiments/issues/73) |
 
 ## Scope
@@ -83,9 +83,23 @@ excluded and hidden accounts, the default account, no-ops, persistence errors,
 readback errors, and recovery failures. These tests do not prove native UI
 behavior or replace testing in Thunderbird.
 
-Native validation is still pending: an isolated headless Thunderbird 160 test
-profile did not produce a completed result. No successful native runtime,
-restart-persistence, or folder-pane UI test is claimed by this draft.
+Native validation passed on Windows with Thunderbird 160.0, build
+`20261106235107`, using the unchanged implementation and schema in an add-on
+calling both methods through the real extension API. The synthetic profile
+contained one POP3 account, two visible local accounts, and a hidden local
+account. Checks covered agreement with `accounts.list(false)`, no-op behavior,
+rejection of incomplete/duplicate/unknown IDs without mutation, reversal,
+default-account and hidden-account preservation, full-process restart
+persistence, and restoration of the original order.
+
+The visible folder pane was independently observed in four states: original
+order, reversed order, reversed order after a full restart, and restored order.
+The actual rendered server rows matched the expected account order in each
+state. The policy-installed Zeche Mail-Ordnung extension remained installed;
+its unrelated mail-tab sorting errors were observed and are not claimed fixed.
+Earlier test-harness startup failures were corrected in the harness; the API
+implementation itself did not change. These results do not establish native
+failure-recovery behavior, other account topologies, or other platforms.
 
 For native testing, use a disposable profile with synthetic accounts. Compare
 `getOrder()` with the IDs from `accounts.list(false)`, reverse the order, check
