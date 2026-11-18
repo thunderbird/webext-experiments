@@ -65,7 +65,7 @@ this.calendar_calendars = class extends ExtensionAPI {
                   matches = false;
                 }
 
-                if (readOnly != null && calendar.readOnly != readOnly) {
+                if (readOnly != null && !!calendar.readOnly != readOnly) {
                   matches = false;
                 }
 
@@ -321,8 +321,10 @@ this.calendar_calendars = class extends ExtensionAPI {
                   switch (name) {
                     case "name":
                     case "color":
-                    case "readOnly":
                       fire.sync(converted, { [name]: value });
+                      break;
+                    case "readOnly":
+                      fire.sync(converted, { readOnly: !!value });
                       break;
                     case "uri":
                       fire.sync(converted, { url: value?.spec });

@@ -73,7 +73,8 @@ export function convertCalendar(extension, calendar) {
     type: calendar.type,
     name: calendar.name,
     url: calendar.uri.spec,
-    readOnly: calendar.readOnly,
+    // The property can be unset (null) when the calendar never got a value.
+    readOnly: !!calendar.readOnly,
     visible: !!calendar.getProperty("calendar-main-in-composite"),
     showReminders: !calendar.getProperty("suppressAlarms"),
     enabled: !calendar.getProperty("disabled"),
