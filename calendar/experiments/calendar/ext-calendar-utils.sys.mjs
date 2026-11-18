@@ -77,7 +77,7 @@ export function convertCalendar(extension, calendar) {
   return props;
 }
 
-function parseJcalData(jcalComp) {
+async function parseJcalData(jcalComp, calendar) {
   function generateItem(jcalSubComp) {
     let item;
     if (jcalSubComp.name == "vevent") {
@@ -121,8 +121,31 @@ function parseJcalData(jcalComp) {
       parent = generateItem(subComp);
     }
 
+    if (!parent && exceptions.length && calendar) {
+      // Only exceptions were supplied, which is what a single edited occurrence
+      // looks like: convertItem serializes just the item it was given, so the
+      // occurrence arrives as a lone vevent with a recurrence-id and nothing to
+      // attach it to. The series it belongs to is the item sharing its uid.
+      //
+      // A provider calendar's getItem reads the offline storage directly and
+      // does not ask the provider again, so this does not re-enter modifyItem.
+      const uid = exceptions[0].getFirstPropertyValue("uid");
+      const stored = uid ? await calendar.getItem(uid) : null;
+      if (stored) {
+        // Merging an exception mutates the recurrence info, and the stored item
+        // is not ours to change.
+        parent = stored.clone();
+      }
+    }
+
     if (!parent) {
-      throw new ExtensionError("TODO need to retrieve a parent item from storage");
+      let reason = "No vevent or vtodo component found";
+      if (exceptions.length) {
+        reason = calendar
+          ? "Exceptions were supplied for an item that could not be found"
+          : "Exceptions were supplied without their parent item";
+      }
+      throw new ExtensionError(reason);
     }
 
     if (exceptions.length && !parent.recurrenceInfo) {
@@ -141,7 +164,16 @@ function parseJcalData(jcalComp) {
   throw new ExtensionError("Don't know how to handle component type " + jcalComp.name);
 }
 
-export function propsToItem(props) {
+/**
+ * Convert the item properties of the API to a calendar item.
+ *
+ * @param {object} props - The item properties, including format and item.
+ * @param {calICalendar} [calendar] - If given, a parent that is missing from
+ *   props (only exceptions supplied) is looked up in this calendar. Only the
+ *   paths that modify an item pass it: a create carrying just an exception
+ *   would otherwise resolve, and quietly modify, an existing series.
+ */
+export async function propsToItem(props, calendar) {
   let jcalComp;
 
   if (props.format == "ical") {
@@ -150,14 +182,14 @@ export function propsToItem(props) {
     } catch (e) {
       throw new ExtensionError("Could not parse iCalendar", { cause: e });
     }
-    return parseJcalData(jcalComp);
+    return parseJcalData(jcalComp, calendar);
   } else if (props.format == "jcal") {
     try {
       jcalComp = new ICAL.Component(props.item);
     } catch (e) {
       throw new ExtensionError("Could not parse jCal", { cause: e });
     }
-    return parseJcalData(jcalComp);
+    return parseJcalData(jcalComp, calendar);
   }
 
   throw new ExtensionError("Invalid item format: " + props.format);
