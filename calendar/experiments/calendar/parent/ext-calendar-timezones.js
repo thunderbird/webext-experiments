@@ -15,14 +15,22 @@ this.calendar_timezones = class extends ExtensionAPI {
             context,
             name: "calendar.timezones.onUpdated",
             register: fire => {
-              cal.timezoneService.wrappedJSObject._updateDefaultTimezone();
+              // COMPAT (TB <= 153 only, not needed on release): On TB <= 153
+              // the service is an XPCOM service and wrappedJSObject reaches
+              // _updateDefaultTimezone(). TB 154 (Bug 2022873) made it a plain
+              // ESM singleton and the method #private, so both are gone there
+              // and this probe short-circuits. Nothing is lost on 154+, the
+              // service observes the same prefs and system timezone topic.
+              cal.timezoneService.wrappedJSObject?._updateDefaultTimezone?.();
               let lastValue = cal.timezoneService.defaultTimezone?.tzid;
 
               const observer = {
                 QueryInterface: ChromeUtils.generateQI(["nsIObserver"]),
                 observe(_subject, _topic, _data) {
-                  // Make sure the default timezone is updated before firing
-                  cal.timezoneService.wrappedJSObject._updateDefaultTimezone();
+                  // COMPAT (TB <= 153 only, not needed on release): Make sure
+                  // the default timezone is updated before firing. No-op on
+                  // TB 154+, see the note in register() above.
+                  cal.timezoneService.wrappedJSObject?._updateDefaultTimezone?.();
                   const currentValue = cal.timezoneService.defaultTimezone?.tzid;
                   if (currentValue != lastValue) {
                     lastValue = currentValue;
