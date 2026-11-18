@@ -241,20 +241,25 @@ this.calendar_calendars = class extends ExtensionAPI {
               throw new ExtensionError("Cannot clear foreign calendar");
             }
 
-            await new Promise((resolve, reject) => {
-              const listener = {
-                onDeleteCalendar(aCalendar, aStatus, aDetail) {
-                  if (Components.isSuccessCode(aStatus)) {
-                    resolve();
-                  } else {
-                    reject(aDetail);
-                  }
-                },
-              };
-              offlineStorage
-                .QueryInterface(Ci.calICalendarProvider)
-                .deleteCalendar(offlineStorage, listener);
-            });
+            // COMPAT (TB <= 153 only, not needed on release): Up to TB 153
+            // deleteCalendar() takes a listener and reports through it. Newer
+            // versions (Bug 2061621) have no listener and return a promise
+            // instead, so the listener below is never called there. Wait for
+            // whichever one the host provides.
+            const { promise: listenerPromise, resolve, reject } = Promise.withResolvers();
+            const listener = {
+              onDeleteCalendar(aCalendar, aStatus, aDetail) {
+                if (Components.isSuccessCode(aStatus)) {
+                  resolve();
+                } else {
+                  reject(aDetail);
+                }
+              },
+            };
+            const result = offlineStorage
+              .QueryInterface(Ci.calICalendarProvider)
+              .deleteCalendar(offlineStorage, listener);
+            await (typeof result?.then == "function" ? result : listenerPromise);
 
             calendar.wrappedJSObject.mObservers.notify("onLoad", [calendar]);
           },
