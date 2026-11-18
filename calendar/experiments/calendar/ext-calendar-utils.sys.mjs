@@ -52,6 +52,17 @@ export function isCachedCalendar(id) {
   return id.endsWith("#cache");
 }
 
+// The refresh interval in minutes that Thunderbird uses for a calendar that has
+// none set. It mirrors the default in CalCalendarManager.setupRefreshTimer, which
+// the calendar properties dialog hard-codes a second time.
+// TODO When this API moves into core, do not keep another copy here. Either take
+// the value from one constant that all of them share, or introduce a changeable
+// default pref that the calendar manager, the properties dialog and this API all
+// use. In that case report null for a calendar without a value of its own, and
+// expose the default itself through the settings API or as a property of the
+// calendar API.
+const DEFAULT_REFRESH_INTERVAL = 30;
+
 export function convertCalendar(extension, calendar) {
   if (!calendar) {
     return null;
@@ -68,6 +79,19 @@ export function convertCalendar(extension, calendar) {
     enabled: !calendar.getProperty("disabled"),
     color: calendar.getProperty("color") || "#A8C2E1",
   };
+
+  // Minutes between automatic refreshes, 0 meaning "do not refresh". This is the
+  // interval Thunderbird actually uses: a calendar that was never given one gets
+  // the default, like in CalCalendarManager.setupRefreshTimer, and a value that is
+  // not a positive number arms no timer there, so it is reported as 0. The
+  // property bag can hold the value as a string, so normalise. A calendar that
+  // cannot refresh has no interval to report, just like the calendar properties
+  // dialog hides the setting for it.
+  if (calendar.canRefresh) {
+    const storedInterval = calendar.getProperty("refreshInterval");
+    const minutes = storedInterval === null ? DEFAULT_REFRESH_INTERVAL : parseInt(storedInterval, 10);
+    props.refreshInterval = minutes > 0 ? minutes : 0;
+  }
 
   if (isOwnCalendar(calendar, extension)) {
     props.cacheId = calendar.superCalendar.id + "#cache";

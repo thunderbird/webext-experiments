@@ -16,6 +16,7 @@
           "visible": { "type": "boolean" },
           "showReminders": { "type": "boolean" },
           "color": { "type": "string", "optional": true },
+          "refreshInterval": { "type": "integer", "minimum": 0, "optional": true, "description": "Minutes between automatic refreshes by Thunderbird, 0 meaning never. A calendar that was never given a value reports the default of 30." },
           "capabilities": { "$ref": "CalendarCapabilities", "optional": true }
         }
       },
@@ -29,7 +30,8 @@
           "enabled": { "type": "boolean" },
           "visible": { "type": "boolean" },
           "showReminders": { "type": "boolean" },
-          "color": { "type": "string", "optional": true }
+          "color": { "type": "string", "optional": true },
+          "refreshInterval": { "type": "integer", "minimum": 0, "optional": true, "description": "Minutes between automatic refreshes by Thunderbird, 0 meaning never. A calendar that was never given a value reports the default of 30." }
         }
       },
       {
@@ -145,6 +147,7 @@
               "visible": { "type": "boolean", "optional": true },
               "showReminders": { "type": "boolean", "optional": true },
               "color": { "type": "string", "optional": true },
+              "refreshInterval": { "type": "integer", "minimum": 0, "optional": true, "description": "Minutes between automatic refreshes by Thunderbird, 0 disabling them. Thunderbird's default of 30 applies if the calendar has none. Not allowed for a calendar that cannot refresh." },
               "capabilities": {
                 "type": "object",
                 "optional": true,
@@ -170,6 +173,7 @@
               "readOnly": { "type": "boolean", "optional": true },
               "enabled": { "type": "boolean", "optional": true },
               "color": { "type": "string", "optional": true },
+              "refreshInterval": { "type": "integer", "minimum": 0, "optional": true, "description": "Minutes between automatic refreshes by Thunderbird, 0 disabling them. Thunderbird's default of 30 applies if the calendar has none. Not allowed for a calendar that cannot refresh." },
               "lastError": { "type": "string", "optional": true },
               "capabilities": {
                 "type": "object",
