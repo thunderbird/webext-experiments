@@ -190,6 +190,18 @@ class ExtCalendar extends cal.provider.BaseClass {
     return this;
   }
 
+  // boolean canNotify(in AUTF8String aMethod, in calIItemBase aItem);
+  //
+  // True when the server does the scheduling: it sends the invitations for a
+  // meeting pushed to it, and the replies for one answered through its API. The
+  // event dialog asks this to decide whether to offer the client-side "notify
+  // attendees" options, and the inherited implementation answers false for every
+  // calendar. Outgoing mail is already suppressed by the "itip.transport"
+  // property below, so this only keeps the dialog from suggesting otherwise.
+  canNotify() {
+    return this.capabilities.scheduling == "server";
+  }
+
   setProperty(name, value) {
     if (name === "readOnly" && this.capabilities.mutable === false) {
       return; // prevent change
