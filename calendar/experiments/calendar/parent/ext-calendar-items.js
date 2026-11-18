@@ -83,7 +83,15 @@ this.calendar_items = class extends ExtensionAPI {
 
             let createdItem;
             if (isCachedCalendar(calendarId)) {
-              createdItem = await calendar.modifyItem(item, null);
+              // The cache replaces an item with the same id instead of
+              // refusing it. Announce what actually happens: a new item is
+              // created, an existing one is modified.
+              const existingItem = await calendar.getItem(item.id);
+              if (existingItem) {
+                createdItem = await calendar.modifyItem(item, existingItem);
+              } else {
+                createdItem = await calendar.adoptItem(item);
+              }
             } else {
               createdItem = await calendar.adoptItem(item);
             }
