@@ -17,12 +17,15 @@ var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.
 cal.timezoneService.startup?.(null);
 
 this.calendar_timezones = class extends ExtensionAPI {
-  getAPI(_context) {
+  getAPI(context) {
     return {
       calendar: {
         timezones: {
           get timezoneIds() {
-            return cal.timezoneService.timezoneIds;
+            // Objects handed to the extension must be cloned into its scope,
+            // otherwise the extension gets a wrapper it may not touch
+            // ("Permission denied to access property ...").
+            return Cu.cloneInto([...cal.timezoneService.timezoneIds], context.cloneScope);
           },
           get currentZone() {
             // COMPAT (TB <= 153 only, not needed on release): There used to be
@@ -39,7 +42,8 @@ this.calendar_timezones = class extends ExtensionAPI {
             let zoneInfo = timezoneDatabase.getTimezoneDefinition(tzid);
 
             if (returnFormat == "jcal") {
-              zoneInfo = ICAL.parse(zoneInfo);
+              // The parsed jCal is an object, so it needs cloning (see above).
+              zoneInfo = Cu.cloneInto(ICAL.parse(zoneInfo), context.cloneScope);
             }
 
             return zoneInfo;
