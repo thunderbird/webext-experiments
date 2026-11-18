@@ -34,7 +34,7 @@
         ],
         "returns": {
           "description": "The definition, or null if there is no timezone with that id",
-          "choices": [{ "type": "string" }, { "type": "null" }]
+          "choices": [{ "type": "string" }, { "type": "array" }, { "type": "null" }]
         }
       }
     ],
