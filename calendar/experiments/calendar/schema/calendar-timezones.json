@@ -8,7 +8,7 @@
         "choices": [{ "type": "string" }, { "type": "null" }]
       },
       "timezoneIds": {
-        "description": "The current timezone id",
+        "description": "The ids of all timezones known to the host",
         "type": "array",
         "items": { "type": "string" }
       }
