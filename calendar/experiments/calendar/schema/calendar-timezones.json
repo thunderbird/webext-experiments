@@ -4,8 +4,8 @@
     "namespace": "calendar.timezones",
     "properties": {
       "currentZone": {
-        "description": "The current timezone id",
-        "type": "string"
+        "description": "The current timezone id, or null if the host has no default timezone",
+        "choices": [{ "type": "string" }, { "type": "null" }]
       },
       "timezoneIds": {
         "description": "The current timezone id",
@@ -33,7 +33,8 @@
           }
         ],
         "returns": {
-          "type": "string"
+          "description": "The definition, or null if there is no timezone with that id",
+          "choices": [{ "type": "string" }, { "type": "null" }]
         }
       }
     ],
