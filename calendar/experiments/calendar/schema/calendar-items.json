@@ -39,8 +39,16 @@
         "properties": {
           "itemId": { "type": "string" },
           "action": { "type": "string" },
-          "date": { "type": "string" },
-          "offset": { "type": "string" },
+          "date": {
+            "type": "string",
+            "optional": true,
+            "description": "The alarm time as an iCalendar date-time. Only present for an absolute alarm."
+          },
+          "offset": {
+            "type": "string",
+            "optional": true,
+            "description": "The offset from the start or end of the item as an iCalendar duration. Only present for an alarm relative to the item."
+          },
           "related": { "type": "string", "enum": ["absolute", "start", "end"] }
         }
       }
