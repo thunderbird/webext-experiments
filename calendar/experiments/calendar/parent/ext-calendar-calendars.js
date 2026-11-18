@@ -14,7 +14,6 @@ this.calendar_calendars = class extends ExtensionAPI {
     const query = context.extension.manifest.version;
     const {
       createCalendarObserver,
-      unwrapCalendar,
       getResolvedCalendarById,
       isOwnCalendar,
       convertCalendar,
@@ -75,10 +74,13 @@ this.calendar_calendars = class extends ExtensionAPI {
               .map(calendar => convertCalendar(context.extension, calendar));
           },
           async get(id) {
+            // The cache calendar is internal. Converting it would hand out the
+            // path of the cache file in the user's profile, so it is not
+            // available. Answer like the other calendar functions do for an id
+            // they cannot resolve. The cache id still works with the items
+            // functions and calendars.clear.
             if (id.endsWith("#cache")) {
-              const calendar = unwrapCalendar(cal.manager.getCalendarById(id.substring(0, id.length - 6)));
-              const own = calendar.offlineStorage && isOwnCalendar(calendar, context.extension);
-              return own ? convertCalendar(context.extension, calendar.offlineStorage) : null;
+              throw new ExtensionError(`Invalid calendar id: ${id}`);
             }
             const calendar = cal.manager.getCalendarById(id);
             return convertCalendar(context.extension, calendar);
