@@ -100,8 +100,22 @@
                 "optional": true
               },
               "type": { "type": "string", "enum": ["event", "task"], "optional": true },
-              "rangeStart": { "type": "string", "optional": true },
-              "rangeEnd": { "type": "string", "optional": true },
+              "rangeStart": {
+                "choices": [
+                  { "$ref": "extensionTypes.Date" },
+                  { "type": "string", "pattern": "^\\d{8}(T\\d{6}Z?)?$" }
+                ],
+                "optional": true,
+                "description": "Returns only items that end after this point in time. Either a date as used by the other Thunderbird APIs (an ISO 8601 string like 2026-12-01T00:00:00Z, a number of milliseconds since the epoch or a Date object), or an iCalendar date or date-time like 20261201T000000Z."
+              },
+              "rangeEnd": {
+                "choices": [
+                  { "$ref": "extensionTypes.Date" },
+                  { "type": "string", "pattern": "^\\d{8}(T\\d{6}Z?)?$" }
+                ],
+                "optional": true,
+                "description": "Returns only items that start before this point in time. Either a date as used by the other Thunderbird APIs (an ISO 8601 string like 2026-12-01T00:00:00Z, a number of milliseconds since the epoch or a Date object), or an iCalendar date or date-time like 20261201T000000Z."
+              },
               "expand": { "type": "boolean", "optional": true }
             }
           },
