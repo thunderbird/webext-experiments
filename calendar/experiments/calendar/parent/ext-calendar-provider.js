@@ -67,12 +67,23 @@ function getUtils(extension) {
 }
 
 function convertProps(props, extension) {
+  const { validateCapabilities, mergeCapabilities } = getUtils(extension);
+  // Before anything is set on the calendar, so that invalid capabilities
+  // reject the whole calendar
+  const capabilities = validateCapabilities(props.capabilities);
+
   const calendar = new ExtCalendar(extension);
   calendar.setProperty("name", props.name);
   calendar.setProperty("readOnly", props.readOnly);
   calendar.setProperty("disabled", props.enabled === false);
   calendar.setProperty("color", props.color || "#A8C2E1");
-  calendar.capabilities = props.capabilities; // TODO validation necessary?
+
+  // The capabilities are the ones of the manifest, overridden by the ones the
+  // calendar was detected with. They are stored as the override like those of a
+  // created calendar, so that they survive the registration, which computes
+  // them again from the manifest and the stored override.
+  calendar.setProperty("overrideCapabilities", JSON.stringify(capabilities));
+  calendar.capabilities = mergeCapabilities(extension.manifest.calendar_provider?.capabilities || {}, capabilities);
 
   calendar.uri = Services.io.newURI(props.url);
 
@@ -137,7 +148,13 @@ class ExtCalendarProvider {
 
   async detectCalendars(username, password, location=null, savePassword=null, extraProperties={}) {
     const detectionResponses = await this.extension.emit("calendar.provider.onDetectCalendars", username, password, location, savePassword, extraProperties);
-    return detectionResponses.reduce((allCalendars, calendars) => allCalendars.concat(calendars)).map(props => convertProps(props, this.extension));
+    try {
+      return detectionResponses.reduce((allCalendars, calendars) => allCalendars.concat(calendars)).map(props => convertProps(props, this.extension));
+    } catch (e) {
+      // The wizard only reports that nothing was found, so tell the developer why
+      console.error(e);
+      throw e;
+    }
   }
 }
 
