@@ -64,7 +64,9 @@ this.calendar_items = class extends ExtensionAPI {
               }));
             }
 
-            return calendarItems.flat().map(item => convertItem(item, queryProps, context.extension));
+            // Searching by id asks every calendar, and one that does not have
+            // the item answers null. Those are not results.
+            return calendarItems.flat().filter(Boolean).map(item => convertItem(item, queryProps, context.extension));
           },
           async get(calendarId, id, options) {
             const calendar = getResolvedCalendarById(context.extension, calendarId);
