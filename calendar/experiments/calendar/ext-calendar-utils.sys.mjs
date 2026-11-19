@@ -255,26 +255,25 @@ export function convertItem(item, options, extension) {
     }
   }
 
-  if (options?.returnFormat) {
-    props.format = options.returnFormat;
+  // The item is returned in the requested format, as jCal if there is none.
+  props.format = options?.returnFormat || "jcal";
 
-    const serializer = Cc["@mozilla.org/calendar/ics-serializer;1"].createInstance(
-      Ci.calIIcsSerializer
-    );
-    serializer.addItems([item]);
-    const icalString = serializer.serializeToString();
+  const serializer = Cc["@mozilla.org/calendar/ics-serializer;1"].createInstance(
+    Ci.calIIcsSerializer
+  );
+  serializer.addItems([item]);
+  const icalString = serializer.serializeToString();
 
-    switch (options.returnFormat) {
-      case "ical":
-        props.item = icalString;
-        break;
-      case "jcal":
-        // TODO shortcut when using icaljs backend
-        props.item = ICAL.parse(icalString);
-        break;
-      default:
-        throw new ExtensionError("Invalid format specified: " + options.returnFormat);
-    }
+  switch (props.format) {
+    case "ical":
+      props.item = icalString;
+      break;
+    case "jcal":
+      // TODO shortcut when using icaljs backend
+      props.item = ICAL.parse(icalString);
+      break;
+    default:
+      throw new ExtensionError("Invalid format specified: " + props.format);
   }
 
   return props;
