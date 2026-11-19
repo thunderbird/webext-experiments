@@ -51,6 +51,97 @@ export function mergeCapabilities(base, override) {
   return result;
 }
 
+const isBoolean = value => typeof value == "boolean";
+const isString = value => typeof value == "string";
+const isCount = value => Number.isInteger(value) && value >= -1;
+const isStringArray = value => Array.isArray(value) && value.every(isString);
+const isOneOf = (...allowed) => value => allowed.includes(value);
+
+// The capabilities and what a valid value looks like. An object stands for a
+// nested object.
+//
+// This repeats CalendarCapabilitiesOverride of the schema, which validates what
+// calendars.create and calendars.update are given. It is needed because the
+// capabilities a provider returns from onDetectCalendars are not covered by the
+// schema: the schema engine ignores the "returns" of an event and never checks
+// what a listener returns. Keep this in line with the schema.
+//
+// IDEA to try once this API is part of Thunderbird, where its schemas are in
+// the global schema root: validate with the schema engine instead of this table,
+//   Schemas.normalize(value, typeName, context)
+// as toolkit's ExtensionDNRStore does, with a context of { url, principal,
+// logError, preprocessors: {}, manifestVersion }. It returns { value } or
+// { error }. Schemas.normalize splits the type name at the first dot, so it
+// cannot reach a type in the namespace calendar.calendars. The type would have to
+// be in, or aliased from, a namespace without dots, for example a namespace that
+// only has the type { "id": "CapabilitiesOverride", "$ref":
+// "calendar.calendars.CalendarCapabilitiesOverride" }.
+// It does not work in this experiment. The global schema root does not contain
+// the schemas of an experiment, the lookup fails with "type is undefined", and
+// the extra namespace shows up as an empty object of the API.
+const CAPABILITIES = {
+  timezones: { floating: isBoolean, UTC: isBoolean },
+  organizer: isString,
+  organizerName: isString,
+  attachments: isBoolean,
+  priority: isBoolean,
+  privacy: value => isBoolean(value) || isStringArray(value),
+  categories: { count: isCount },
+  alarms: { count: isCount, actions: isStringArray },
+  tasks: isBoolean,
+  events: isBoolean,
+  removeModes: value => Array.isArray(value) && value.every(isOneOf("unsubscribe", "delete")),
+  requiresNetwork: isBoolean,
+  minimumRefreshInterval: isCount,
+  mutable: isBoolean,
+  scheduling: isOneOf("client", "server", "none"),
+};
+
+/**
+ * The names of the capabilities, and for the nested ones the names inside.
+ */
+export const CAPABILITY_NAMES = Object.fromEntries(
+  Object.entries(CAPABILITIES).map(([name, check]) => [name, typeof check == "function" ? null : Object.keys(check)])
+);
+
+function checkCapabilities(value, spec, path) {
+  if (value === null || typeof value != "object" || Array.isArray(value)) {
+    throw new ExtensionError(`Invalid capabilities: ${path} has to be an object`);
+  }
+  for (const [name, inner] of Object.entries(value)) {
+    const check = spec[name];
+    if (check === undefined) {
+      throw new ExtensionError(`Invalid capabilities: unknown capability ${path}.${name}`);
+    }
+    if (inner === null) {
+      // Not set
+      continue;
+    }
+    if (typeof check == "function") {
+      if (!check(inner)) {
+        throw new ExtensionError(`Invalid capabilities: wrong value for ${path}.${name}`);
+      }
+    } else {
+      checkCapabilities(inner, check, `${path}.${name}`);
+    }
+  }
+}
+
+/**
+ * Validates capabilities an extension returned.
+ *
+ * @param {object} [capabilities] - The capabilities to validate.
+ * @returns {object} The capabilities, empty if there are none.
+ * @throws {ExtensionError} If a name is unknown or a value is of the wrong type.
+ */
+export function validateCapabilities(capabilities) {
+  if (capabilities === undefined || capabilities === null) {
+    return {};
+  }
+  checkCapabilities(capabilities, CAPABILITIES, "capabilities");
+  return capabilities;
+}
+
 export function getResolvedCalendarById(extension, id) {
   let calendar;
   if (id.endsWith("#cache")) {
