@@ -17,6 +17,7 @@ this.calendar_calendars = class extends ExtensionAPI {
       getResolvedCalendarById,
       isOwnCalendar,
       convertCalendar,
+      mergeCapabilities,
     } = ChromeUtils.importESModule(
       `resource://${root}/experiments/calendar/ext-calendar-utils.sys.mjs?${query}`
     );
@@ -192,7 +193,6 @@ this.calendar_calendars = class extends ExtensionAPI {
             }
 
             if (updateProperties.capabilities) {
-              // TODO validate capability names
               const unwrappedCalendar = calendar.wrappedJSObject.mUncachedCalendar.wrappedJSObject;
               let overrideCapabilities;
               try {
@@ -200,13 +200,11 @@ this.calendar_calendars = class extends ExtensionAPI {
               } catch(e) {
                 overrideCapabilities = {};
               }
-              for (const [key, value] of Object.entries(updateProperties.capabilities)) {
-                if (value === null) {
-                  continue;
-                }
-                unwrappedCalendar.capabilities[key] = value;
-                overrideCapabilities[key] = value;
-              }
+
+              // Only what was passed changes, the omitted capabilities keep their value
+              const changes = updateProperties.capabilities;
+              unwrappedCalendar.capabilities = mergeCapabilities(unwrappedCalendar.capabilities, changes);
+              overrideCapabilities = mergeCapabilities(overrideCapabilities, changes);
 
               calendar.setProperty("overrideCapabilities", JSON.stringify(overrideCapabilities));
             }

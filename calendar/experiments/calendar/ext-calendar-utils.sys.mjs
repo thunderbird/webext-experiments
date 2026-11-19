@@ -29,6 +29,28 @@ export function unwrapCalendar(calendar) {
   return unwrapped;
 }
 
+/**
+ * Merges capabilities over a base, normally the ones of the manifest. Objects
+ * (timezones, categories, alarms) are merged key by key, so an omitted key
+ * falls back to the base. Everything else, arrays included, replaces the base.
+ * A null is a capability that is not set, it does not replace anything.
+ *
+ * @param {object} base - The capabilities to start from.
+ * @param {object} override - The capabilities that take precedence.
+ * @returns {object} The merged capabilities, base and override are not changed.
+ */
+export function mergeCapabilities(base, override) {
+  const isObject = value => value !== null && typeof value == "object" && !Array.isArray(value);
+  const result = { ...base };
+  for (const [key, value] of Object.entries(override ?? {})) {
+    if (value === null) {
+      continue;
+    }
+    result[key] = isObject(value) && isObject(result[key]) ? mergeCapabilities(result[key], value) : value;
+  }
+  return result;
+}
+
 export function getResolvedCalendarById(extension, id) {
   let calendar;
   if (id.endsWith("#cache")) {
