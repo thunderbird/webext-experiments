@@ -201,23 +201,41 @@ async function parseJcalData(jcalComp, calendar) {
 export async function propsToItem(props, calendar) {
   let jcalComp;
 
-  if (props.format == "ical") {
+  // The type of the item tells its format: iCalendar is a string, jCal is an
+  // array. Neither can be empty. The format is optional, and if it is given it
+  // has to match.
+  let detected;
+  if (typeof props.item == "string" && props.item) {
+    detected = "ical";
+  } else if (Array.isArray(props.item) && props.item.length) {
+    detected = "jcal";
+  } else {
+    throw new ExtensionError("Invalid item: expected a non-empty iCalendar string or a jCal array");
+  }
+
+  const format = props.format ?? detected;
+  if (format != "ical" && format != "jcal") {
+    throw new ExtensionError("Invalid item format: " + format);
+  }
+  if (format != detected) {
+    const given = detected == "ical" ? "an iCalendar string" : "a jCal array";
+    throw new ExtensionError(`The item format is ${format}, but the item is ${given}`);
+  }
+
+  if (format == "ical") {
     try {
       jcalComp = new ICAL.Component(ICAL.parse(props.item));
     } catch (e) {
       throw new ExtensionError("Could not parse iCalendar", { cause: e });
     }
-    return parseJcalData(jcalComp, calendar);
-  } else if (props.format == "jcal") {
+  } else {
     try {
       jcalComp = new ICAL.Component(props.item);
     } catch (e) {
       throw new ExtensionError("Could not parse jCal", { cause: e });
     }
-    return parseJcalData(jcalComp, calendar);
   }
-
-  throw new ExtensionError("Invalid item format: " + props.format);
+  return parseJcalData(jcalComp, calendar);
 }
 
 export function convertItem(item, options, extension) {

@@ -145,8 +145,15 @@
             "properties": {
               "id": { "type": "string", "optional": true },
               "type": { "type": "string", "enum": ["event", "task"] },
-              "format": { "$ref": "CalendarItemFormats", "optional": true },
-              "item": { "$ref": "RawCalendarItem" },
+              "format": {
+                "$ref": "CalendarItemFormats",
+                "optional": true,
+                "description": "The format of item: ical for an iCalendar string, jcal for a jCal array. If it is omitted, it is detected from the type of item. If it is given, it has to match."
+              },
+              "item": {
+                "$ref": "RawCalendarItem",
+                "description": "The item, as an iCalendar string or a jCal array."
+              },
               "returnFormat": { "$ref": "CalendarItemFormats", "optional": true },
               "metadata": { "type": "object", "properties": {}, "additionalProperties": { "type": "any" }, "optional": true }
             }
@@ -175,8 +182,15 @@
             "name": "updateProperties",
             "type": "object",
             "properties": {
-              "format": { "$ref": "CalendarItemFormats", "optional": true },
-              "item": { "$ref": "RawCalendarItem" },
+              "format": {
+                "$ref": "CalendarItemFormats",
+                "optional": true,
+                "description": "The format of item: ical for an iCalendar string, jcal for a jCal array. If it is omitted, it is detected from the type of item. If it is given, it has to match."
+              },
+              "item": {
+                "$ref": "RawCalendarItem",
+                "description": "The item, as an iCalendar string or a jCal array."
+              },
               "returnFormat": { "$ref": "CalendarItemFormats", "optional": true },
               "metadata": { "type": "object", "additionalProperties": { "type": "any" }, "optional": true }
             }
