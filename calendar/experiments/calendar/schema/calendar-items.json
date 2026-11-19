@@ -251,7 +251,7 @@
         "type": "function",
         "parameters": [
           { "name": "item", "$ref": "CalendarItem" },
-          { "name": "changeInfo", "type": "object", "properties": {}, "description": "TODO needs properties" }
+          { "name": "oldItem", "$ref": "CalendarItem" }
         ],
         "extraParameters": [
           {

@@ -193,10 +193,11 @@ this.calendar_items = class extends ExtensionAPI {
             name: "calendar.items.onUpdated",
             register: (fire, options) => {
               const observer = createCalendarObserver({
-                onModifyItem: (newItem, _oldItem) => {
-                  // TODO calculate changeInfo
-                  const changeInfo = {};
-                  fire.sync(convertItem(newItem, options, context.extension), changeInfo);
+                onModifyItem: (newItem, oldItem) => {
+                  fire.sync(
+                    convertItem(newItem, options, context.extension),
+                    convertItem(oldItem, options, context.extension)
+                  );
                 },
               });
 
