@@ -98,7 +98,7 @@
     "functions": [
       {
         "name": "query",
-        "async": true,
+        "async": "callback",
         "type": "function",
         "parameters": [
           {
@@ -119,20 +119,46 @@
               "visible": { "type": "boolean", "optional": true },
               "enabled": { "type": "boolean", "optional": true }
             }
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "type": "array",
+                "items": { "$ref": "Calendar" },
+                "description": "The calendars that match."
+              }
+            ]
           }
         ]
       },
       {
         "name": "get",
-        "async": true,
+        "async": "callback",
         "type": "function",
         "parameters": [
-          { "type": "string", "name": "id" }
+          { "type": "string", "name": "id" },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "choices": [
+                  { "$ref": "Calendar" },
+                  { "type": "null" }
+                ],
+                "description": "The calendar, or null if there is no calendar with that id."
+              }
+            ]
+          }
          ]
        },
       {
         "name": "create",
-        "async": true,
+        "async": "callback",
         "type": "function",
         "parameters": [
           {
@@ -155,6 +181,17 @@
                 "description": "This is normally CalendarCapabilities, but we don't want to inherit default values here"
               }
             }
+          },
+          {
+            "type": "function",
+            "name": "callback",
+            "optional": true,
+            "parameters": [
+              {
+                "$ref": "Calendar",
+                "description": "The created calendar."
+              }
+            ]
           }
         ]
       },
