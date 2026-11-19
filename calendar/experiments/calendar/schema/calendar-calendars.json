@@ -35,8 +35,82 @@
         }
       },
       {
+        "id": "CalendarCapabilitiesOverride",
+        "type": "object",
+        "description": "Capabilities of a calendar to override the defaults defined in the manifest of the provider.",
+        "properties": {
+          "timezones": {
+            "type": "object",
+            "optional": "omit-key-if-missing",
+            "properties": {
+              "floating": { "type": "boolean", "optional": "omit-key-if-missing" },
+              "UTC": { "type": "boolean", "optional": "omit-key-if-missing" }
+            }
+          },
+          "organizer": { "type": "string", "optional": "omit-key-if-missing" },
+          "organizerName": { "type": "string", "optional": "omit-key-if-missing" },
+          "attachments": { "type": "boolean", "optional": "omit-key-if-missing" },
+          "priority": { "type": "boolean", "optional": "omit-key-if-missing" },
+          "privacy": {
+            "optional": "omit-key-if-missing",
+            "choices": [
+              { "type": "boolean" },
+              { "type": "array", "items": { "type": "string" } }
+            ]
+          },
+          "categories": {
+            "type": "object",
+            "optional": "omit-key-if-missing",
+            "properties": {
+              "count": { "type": "integer", "minimum": -1, "optional": "omit-key-if-missing" }
+            }
+          },
+          "alarms": {
+            "type": "object",
+            "optional": "omit-key-if-missing",
+            "properties": {
+              "count": { "type": "integer", "minimum": -1, "optional": "omit-key-if-missing" },
+              "actions": { "type": "array", "items": { "type": "string" }, "optional": "omit-key-if-missing" }
+            }
+          },
+          "tasks": {
+            "type": "boolean",
+            "optional": "omit-key-if-missing",
+            "description": "Whether the calendar supports tasks. Overrides the value of the manifest."
+          },
+          "events": {
+            "type": "boolean",
+            "optional": "omit-key-if-missing",
+            "description": "Whether the calendar supports events. Overrides the value of the manifest."
+          },
+          "removeModes": {
+            "type": "array",
+            "optional": "omit-key-if-missing",
+            "items": {
+              "type": "string",
+              "enum": ["unsubscribe", "delete"]
+            },
+            "description": "How the calendar can be removed. Overrides the value of the manifest."
+          },
+          "requiresNetwork": { "type": "boolean", "optional": "omit-key-if-missing" },
+          "minimumRefreshInterval": { "type": "integer", "minimum": -1, "optional": "omit-key-if-missing" },
+          "mutable": {
+            "type": "boolean",
+            "optional": "omit-key-if-missing",
+            "description": "Whether items of the calendar can be changed. Overrides the value of the manifest."
+          },
+          "scheduling": {
+            "type": "string",
+            "optional": "omit-key-if-missing",
+            "enum": ["client", "server", "none"],
+            "description": "Who sends invitations. Overrides the value of the manifest."
+          }
+        }
+      },
+      {
         "id": "CalendarCapabilities",
         "type": "object",
+        "description": "The capabilities of a calendar.",
         "properties": {
           "timezones": {
             "type": "object",
@@ -72,8 +146,18 @@
               "actions": { "type": "array", "items": { "type": "string" }, "optional": true }
             }
           },
-          "tasks": { "type": "boolean", "optional": true, "default": true },
-          "events": { "type": "boolean", "optional": true, "default": true },
+          "tasks": {
+            "type": "boolean",
+            "optional": true,
+            "default": true,
+            "description": "Whether the calendar supports tasks."
+          },
+          "events": {
+            "type": "boolean",
+            "optional": true,
+            "default": true,
+            "description": "Whether the calendar supports events."
+          },
           "removeModes": {
             "type": "array",
             "optional": true,
@@ -81,16 +165,23 @@
             "items": {
               "type": "string",
               "enum": ["unsubscribe", "delete"]
-            }
+            },
+            "description": "How the calendar can be removed."
           },
           "requiresNetwork": { "type": "boolean", "optional": true },
           "minimumRefreshInterval": { "type": "integer", "minimum": -1, "optional": true },
-          "mutable": { "type": "boolean", "optional": true, "default": true },
+          "mutable": {
+            "type": "boolean",
+            "optional": true,
+            "default": true,
+            "description": "Whether items of the calendar can be changed."
+          },
           "scheduling": {
             "type": "string",
             "optional": true,
             "default": "client",
-            "enum": ["client", "server", "none"]
+            "enum": ["client", "server", "none"],
+            "description": "Who sends invitations."
           }
         }
       }
@@ -175,10 +266,8 @@
               "color": { "type": "string", "optional": true },
               "refreshInterval": { "type": "integer", "minimum": 0, "optional": true, "description": "Minutes between automatic refreshes by Thunderbird, 0 disabling them. Thunderbird's default of 30 applies if the calendar has none. Not allowed for a calendar that cannot refresh." },
               "capabilities": {
-                "type": "object",
-                "optional": true,
-                "additionalProperties": true,
-                "description": "This is normally CalendarCapabilities, but we don't want to inherit default values here"
+                "$ref": "CalendarCapabilitiesOverride",
+                "optional": true
               }
             }
           },
@@ -213,10 +302,8 @@
               "refreshInterval": { "type": "integer", "minimum": 0, "optional": true, "description": "Minutes between automatic refreshes by Thunderbird, 0 disabling them. Thunderbird's default of 30 applies if the calendar has none. Not allowed for a calendar that cannot refresh." },
               "lastError": { "type": "string", "optional": true },
               "capabilities": {
-                "type": "object",
-                "optional": true,
-                "additionalProperties": true,
-                "description": "This is normally CalendarCapabilities, but we don't want to inherit default values here"
+                "$ref": "CalendarCapabilitiesOverride",
+                "optional": true
               }
             }
           }

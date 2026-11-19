@@ -58,6 +58,14 @@ class ItemError extends Error {
   }
 }
 
+// The utils module of this extension. The version in the url keeps an updated
+// extension from getting the module of the previous one.
+function getUtils(extension) {
+  return ChromeUtils.importESModule(
+    `resource://experiments-calendar-${extension.uuid}/experiments/calendar/ext-calendar-utils.sys.mjs?${extension.manifest.version}`
+  );
+}
+
 function convertProps(props, extension) {
   const calendar = new ExtCalendar(extension);
   calendar.setProperty("name", props.name);
@@ -167,7 +175,8 @@ class ExtCalendar extends cal.provider.BaseClass {
       }
 
       const manifestCapabilities = this.extension.manifest.calendar_provider.capabilities || {};
-      this.capabilities = Object.assign({}, manifestCapabilities, overrideCapabilities);
+      const { mergeCapabilities } = getUtils(this.extension);
+      this.capabilities = mergeCapabilities(manifestCapabilities, overrideCapabilities);
 
       this.extension.emit("calendar.provider.onInit", this);
     }
