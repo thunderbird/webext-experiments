@@ -4,6 +4,8 @@
 
 var { ExtensionCommon: { ExtensionAPI } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionCommon.sys.mjs");
 
+var { ExtensionUtils: { ExtensionError } } = ChromeUtils.importESModule("resource://gre/modules/ExtensionUtils.sys.mjs");
+
 var { default: ICAL } = ChromeUtils.importESModule("resource:///modules/calendar/Ical.sys.mjs");
 
 var { cal } = ChromeUtils.importESModule("resource:///modules/calendar/calUtils.sys.mjs");
@@ -43,7 +45,7 @@ this.calendar_timezones = class extends ExtensionAPI {
             const timezoneDatabase = Cc["@mozilla.org/calendar/timezone-database;1"].getService(
               Ci.calITimezoneDatabase
             );
-            let zoneInfo = timezoneDatabase.getTimezoneDefinition(tzid);
+            const zoneInfo = timezoneDatabase.getTimezoneDefinition(tzid);
 
             // An unknown id yields an empty definition. Report that as null
             // instead of an empty string (or, for jcal, an empty array).
@@ -51,12 +53,14 @@ this.calendar_timezones = class extends ExtensionAPI {
               return null;
             }
 
-            if (returnFormat == "jcal") {
+            if (!returnFormat || returnFormat == "jcal") {
               // The parsed jCal is an object, so it needs cloning (see above).
-              zoneInfo = Cu.cloneInto(ICAL.parse(zoneInfo), context.cloneScope);
+              return Cu.cloneInto(ICAL.parse(zoneInfo), context.cloneScope);
+            } else if (returnFormat == "ical") {
+              return zoneInfo;
             }
 
-            return zoneInfo;
+            throw new ExtensionError(`Invalid return format: ${returnFormat}`);
           },
         }
       }

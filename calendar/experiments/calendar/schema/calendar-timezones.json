@@ -28,7 +28,7 @@
             "$ref": "calendar.items.CalendarItemFormats",
             "name":"returnFormat",
             "optional": true,
-            "default": "ical",
+            "default": "jcal",
             "description": "The return format of the definition"
           }
         ],
