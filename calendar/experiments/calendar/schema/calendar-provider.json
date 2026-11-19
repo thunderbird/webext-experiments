@@ -178,7 +178,7 @@
         "type": "function",
         "parameters": [
           {
-            "name": "FreeBusyOptions",
+            "name": "freeBusyOptions",
             "type": "object",
             "properties": {
               "addressee": { "type": "string" },
